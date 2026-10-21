@@ -1,0 +1,28 @@
+meta {
+  name: Get My Profile
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetMyProfile {
+    myProfile {
+      profile_id
+      user_id
+      full_name
+      date_of_birth
+      gender
+      phone
+      address
+      profile_image_url
+      created_at
+      updated_at
+    }
+  }
+}

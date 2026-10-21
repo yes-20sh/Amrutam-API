@@ -18,6 +18,8 @@ import { PrescriptionModule } from './features/prescription/prescription.module'
 import { PaymentModule } from './features/payment/payment.module';
 import { AuditLogModule } from './features/audit-log/audit-log.module';
 import { AnalyticsModule } from './features/analytics/analytics.module';
+import { ProfileModule } from './features/profile/profile.module';
+import { HealthModule } from './features/health/health.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule({
   attachTraceIdToLogs: true,
@@ -43,6 +45,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
     PaymentModule,
     AuditLogModule,
     AnalyticsModule,
+    ProfileModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })
