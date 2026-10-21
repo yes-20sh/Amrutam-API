@@ -1,0 +1,30 @@
+meta {
+  name: Update My Profile
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation UpdateMyProfile($input: UpdateProfileInput!) {
+    updateProfile(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "full_name": "Dr. Aarav Sharma",
+      "date_of_birth": "1990-05-15T00:00:00.000Z",
+      "gender": "MALE",
+      "phone": "+919876543210",
+      "address": "123 Ayurveda Marg, New Delhi, India",
+      "profile_image": null
+    }
+  }
+}

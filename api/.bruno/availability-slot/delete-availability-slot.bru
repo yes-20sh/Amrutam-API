@@ -1,0 +1,23 @@
+meta {
+  name: Delete Availability Slot
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation DeleteAvailabilitySlot($slotId: ID!) {
+    deleteAvailabilitySlot(slotId: $slotId)
+  }
+}
+
+body:graphql:vars {
+  {
+    "slotId": "00000000-0000-0000-0000-000000000000"
+  }
+}

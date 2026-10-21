@@ -1,0 +1,43 @@
+meta {
+  name: Create Prescription
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation CreatePrescription($input: CreatePrescriptionDto!) {
+    createPrescription(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "consultation_id": "00000000-0000-0000-0000-000000000000",
+      "diagnosis": "Vata imbalance with digestive weakness (Agnimandya)",
+      "medication_details": [
+        {
+          "medicine_name": "Triphala Churna",
+          "dosage": "1 teaspoon (approx 5g)",
+          "frequency": "Once daily with warm water at bedtime",
+          "duration": "14 days",
+          "instructions": "Take 30 minutes after dinner"
+        },
+        {
+          "medicine_name": "Ashwagandha Vati",
+          "dosage": "1 tablet (250mg)",
+          "frequency": "Twice daily after meals",
+          "duration": "30 days",
+          "instructions": "Take with warm milk"
+        }
+      ],
+      "instructions": "Drink warm water throughout the day. Avoid cold, spicy, and deep-fried food. Practice 15 minutes of Pranayama in the morning."
+    }
+  }
+}

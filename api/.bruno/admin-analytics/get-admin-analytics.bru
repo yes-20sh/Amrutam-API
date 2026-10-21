@@ -1,0 +1,49 @@
+meta {
+  name: Get Admin Analytics
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetAdminAnalytics($filter: AnalyticsFilterDto) {
+    getAdminAnalytics(filter: $filter) {
+      total_revenue
+      revenue_growth_percentage
+      total_transactions
+      average_transaction_value
+      total_consultations
+      completed_consultations
+      cancelled_consultations
+      booked_consultations
+      cancellation_rate
+      completion_rate
+      total_doctors
+      pending_doctor_verifications
+      verified_doctors
+      total_patients
+      new_patients
+      active_users_last_30_days
+      total_slots
+      booked_slots
+      available_slots
+      slot_utilization_rate
+      total_prescriptions
+      total_system_errors
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "filter": {
+      "startDate": null,
+      "endDate": null
+    }
+  }
+}

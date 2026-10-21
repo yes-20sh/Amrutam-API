@@ -1,22 +1,21 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
 import { Profile } from './profile.schema';
 import { Doctor } from './doctor.schema';
-import { Consultation } from './consultation.entity';
-import { AuditLog } from './audit_log.schema';
+import { Consultation } from './consultation.schema';
 import { UserRole } from '../common/enum/user-role.enum';
 import { UserStatus } from '../common/enum/user-status.enum';
 
 @Entity('users')
 @Unique(['email'])
 export class User {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
-  user_id: string; // using string to accommodate bigint
+  @PrimaryGeneratedColumn('uuid')
+  user_id: string;
 
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
   @Column({ type: 'varchar', length: 255 })
-  password_hash: string;
+  password: string;
 
   @Column({ type: 'enum', enum: UserRole })
   role: UserRole;
@@ -29,6 +28,15 @@ export class User {
 
   @Column({ type: 'timestamptz', nullable: true })
   last_login_at: Date;
+
+  @Column({ type: 'boolean', default: false })
+  mfa_enabled: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  mfa_secret: string | null;
+
+  @Column({ type: 'simple-array', nullable: true })
+  mfa_backup_codes: string[] | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
@@ -45,7 +53,4 @@ export class User {
 
   @OneToMany(() => Consultation, consultation => consultation.patient)
   consultations: Consultation[];
-
-  @OneToMany(() => AuditLog, auditLog => auditLog.user)
-  audit_logs: AuditLog[];
 }

@@ -1,0 +1,33 @@
+meta {
+  name: Get Audit Logs by API
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetAuditLogsByApi($apiName: String!, $limit: Int, $offset: Int) {
+    getAuditLogsByApi(apiName: $apiName, limit: $limit, offset: $offset) {
+      audit_id
+      api_name
+      error
+      action
+      user_id
+      ip_address
+      created_at
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "apiName": "ConsultationService.bookConsultation",
+    "limit": 50,
+    "offset": 0
+  }
+}

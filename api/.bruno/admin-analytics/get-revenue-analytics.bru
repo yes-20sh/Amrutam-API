@@ -1,0 +1,44 @@
+meta {
+  name: Get Revenue Analytics
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query AdminRevenueAnalytics($filter: AnalyticsFilterInput) {
+    adminRevenueAnalytics(filter: $filter) {
+      total_revenue
+      total_transactions
+      average_transaction_value
+      revenue_by_status {
+        status
+        amount
+        count
+      }
+      revenue_by_payment_method {
+        payment_method
+        amount
+        count
+      }
+      timeline {
+        date
+        revenue
+        transaction_count
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "filter": {
+      "granularity": "DAY"
+    }
+  }
+}

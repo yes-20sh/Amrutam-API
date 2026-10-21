@@ -1,13 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, OneToMany, Index } from 'typeorm';
 import { Doctor } from './doctor.schema';
-import { Consultation } from './consultation.entity';
+import { Consultation } from './consultation.schema';
 
 @Entity('availability_slots')
+@Index(['doctor_id', 'status'])
 export class AvailabilitySlot {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   slot_id: string;
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'uuid' })
   doctor_id: string;
 
   @ManyToOne(() => Doctor, doctor => doctor.availability_slots, { onDelete: 'CASCADE' })

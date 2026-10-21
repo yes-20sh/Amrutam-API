@@ -1,0 +1,41 @@
+meta {
+  name: My Doctor Profile
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query MyDoctorProfile {
+    myDoctorProfile {
+      doctor_id
+      user_id
+      specialization
+      license_number
+      qualification
+      experience_years
+      consultation_fee
+      verification_status
+      bio
+      created_at
+      updated_at
+      user {
+        user_id
+        email
+        role
+        status
+        email_verified
+        profile {
+          full_name
+          phone
+          profile_image_url
+        }
+      }
+    }
+  }
+}

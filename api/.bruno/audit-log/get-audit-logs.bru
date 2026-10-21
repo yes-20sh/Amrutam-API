@@ -1,0 +1,33 @@
+meta {
+  name: Get Audit Logs
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetAuditLogs($action: AuditLogAction, $limit: Int, $offset: Int) {
+    getAuditLogs(action: $action, limit: $limit, offset: $offset) {
+      audit_id
+      api_name
+      error
+      action
+      user_id
+      ip_address
+      created_at
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "action": null,
+    "limit": 50,
+    "offset": 0
+  }
+}

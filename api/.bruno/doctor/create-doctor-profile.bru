@@ -1,0 +1,30 @@
+meta {
+  name: Create Doctor Profile
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation CreateDoctorProfile($input: CreateDoctorDto!) {
+    createDoctorProfile(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "specialization": "Ayurveda General Medicine",
+      "license_number": "AYUSH-DL-2024-98765",
+      "qualification": "BAMS, MD (Ayurveda)",
+      "experience_years": 7,
+      "consultation_fee": "500",
+      "bio": "Experienced Ayurvedic practitioner specializing in holistic wellness, chronic disorders, and lifestyle consultation."
+    }
+  }
+}

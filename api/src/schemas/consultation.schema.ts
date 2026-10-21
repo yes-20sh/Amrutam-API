@@ -1,22 +1,22 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { User } from './user.schema';
 import { Doctor } from './doctor.schema';
-import { AvailabilitySlot } from './availability_slot.entity';
+import { AvailabilitySlot } from './availability_slot.schema';
 import { Prescription } from './prescription.schema';
 import { Payment } from './payment.schema';
 
 @Entity('consultations')
 export class Consultation {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   consultation_id: string;
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'uuid' })
   patient_id: string;
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'uuid' })
   doctor_id: string;
 
-  @Column({ type: 'bigint', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   slot_id: string | null;
 
   @ManyToOne(() => User, user => user.consultations, { onDelete: 'CASCADE' })
@@ -40,8 +40,11 @@ export class Consultation {
   @Column({ type: 'text', nullable: true })
   reason: string | null;
 
-  @Column({ type: 'varchar', length: 20, default: 'BOOKED' })
+  @Column({ type: 'varchar', length: 20, default: 'PENDING_PAYMENT' })
   status: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  hold_expires_at: Date | null;
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;

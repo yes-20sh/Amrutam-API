@@ -1,0 +1,29 @@
+meta {
+  name: Update Doctor Profile
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation UpdateDoctorProfile($input: UpdateDoctorDto!) {
+    updateDoctorProfile(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "specialization": "Panchakarma & Ayurvedic Medicine",
+      "qualification": "BAMS, MD (Ayurveda), PhD",
+      "experience_years": 8,
+      "consultation_fee": "650",
+      "bio": "Senior Ayurvedic consultant specializing in Panchakarma therapies and metabolic wellness."
+    }
+  }
+}

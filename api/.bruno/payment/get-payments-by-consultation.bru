@@ -1,0 +1,38 @@
+meta {
+  name: Get Payments By Consultation
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetPaymentsByConsultation($consultationId: ID!) {
+    getPaymentsByConsultation(consultationId: $consultationId) {
+      payment_id
+      consultation_id
+      amount
+      currency
+      payment_method
+      payment_status
+      transaction_reference
+      paid_at
+      created_at
+      consultation {
+        consultation_id
+        scheduled_at
+        status
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "consultationId": "00000000-0000-0000-0000-000000000000"
+  }
+}

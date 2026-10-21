@@ -4,10 +4,10 @@ import { Gender } from '../common/enum/gender.enum';
 
 @Entity('profiles')
 export class Profile {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   profile_id: string;
 
-  @Column({ type: 'bigint', unique: true })
+  @Column({ type: 'uuid', unique: true })
   user_id: string;
 
   @OneToOne(() => User, user => user.profile)

@@ -1,0 +1,27 @@
+meta {
+  name: Reschedule Consultation
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation RescheduleConsultation($input: RescheduleConsultationDto!) {
+    rescheduleConsultation(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "consultation_id": "00000000-0000-0000-0000-000000000000",
+      "slot_id": "00000000-0000-0000-0000-000000000000",
+      "scheduled_at": "2026-10-26T11:00:00.000Z"
+    }
+  }
+}

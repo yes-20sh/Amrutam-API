@@ -1,0 +1,36 @@
+meta {
+  name: Update Prescription
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation UpdatePrescription($prescriptionId: ID!, $input: UpdatePrescriptionDto!) {
+    updatePrescription(prescriptionId: $prescriptionId, input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "prescriptionId": "00000000-0000-0000-0000-000000000000",
+    "input": {
+      "diagnosis": "Vata-Pitta imbalance with chronic digestive weakness",
+      "medication_details": [
+        {
+          "medicine_name": "Triphala Churna",
+          "dosage": "1 teaspoon (approx 5g)",
+          "frequency": "Once daily at bedtime",
+          "duration": "21 days",
+          "instructions": "Take with warm water"
+        }
+      ],
+      "instructions": "Updated dosage instructions: Continue light diet for another 7 days."
+    }
+  }
+}

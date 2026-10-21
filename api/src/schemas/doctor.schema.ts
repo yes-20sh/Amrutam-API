@@ -1,14 +1,14 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.schema';
-import { Consultation } from './consultation.entity';
-import { AvailabilitySlot } from './availability_slot.entity';
+import { Consultation } from './consultation.schema';
+import { AvailabilitySlot } from './availability_slot.schema';
 
 @Entity('doctors')
 export class Doctor {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   doctor_id: string;
 
-  @Column({ type: 'bigint', unique: true })
+  @Column({ type: 'uuid', unique: true })
   user_id: string;
 
   @OneToOne(() => User, user => user.doctor)

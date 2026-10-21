@@ -1,12 +1,12 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { Consultation } from './consultation.entity';
+import { Consultation } from './consultation.schema';
 
 @Entity('prescriptions')
 export class Prescription {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   prescription_id: string;
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'uuid' })
   consultation_id: string;
 
   @ManyToOne(() => Consultation, consultation => consultation.prescriptions, { onDelete: 'CASCADE' })

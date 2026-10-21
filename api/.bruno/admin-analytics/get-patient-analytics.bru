@@ -1,0 +1,41 @@
+meta {
+  name: Get Patient Analytics
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query AdminPatientAnalytics($filter: AnalyticsFilterInput) {
+    adminPatientAnalytics(filter: $filter) {
+      total_patients
+      new_signups_in_period
+      repeat_consultation_rate
+      retention_cohorts {
+        cohort
+        patient_count
+      }
+      gender_distribution {
+        gender
+        count
+      }
+      signups_timeline {
+        date
+        count
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "filter": {
+      "granularity": "DAY"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Admin Signup
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation Signup($input: SignupDto!) {
+    signup(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "email": "admin@example.com",
+      "password": "strongpassword",
+      "full_name": "Admin User",
+      "phone": "9999999999",
+      "role": "ADMIN"
+    }
+  }
+}
