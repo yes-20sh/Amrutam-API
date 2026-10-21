@@ -8,6 +8,10 @@ A robust, enterprise-grade Telemedicine and Doctor Consultation Backend built wi
 
 - [Overview](#overview)
 - [Architecture & Tech Stack](#architecture--tech-stack)
+- [Feature-Based Architecture & Directory Structure](#feature-based-architecture--directory-structure)
+  - [Architectural Principles](#architectural-principles)
+  - [Directory & File Structure](#directory--file-structure)
+  - [Feature Module Anatomy](#feature-module-anatomy)
 - [Database Schema & Entity Relationship Diagram (ERD)](#database-schema--entity-relationship-diagram-erd)
   - [Entity Relationship Diagram](#entity-relationship-diagram)
   - [Entity Schema Definitions](#entity-schema-definitions)
@@ -17,6 +21,14 @@ A robust, enterprise-grade Telemedicine and Doctor Consultation Backend built wi
   - [3. Multi-Factor Authentication (MFA / 2FA) Deep Dive](#3-multi-factor-authentication-mfa--2fa-deep-dive)
   - [4. Concurrency Control & Double-Booking Prevention](#4-concurrency-control--double-booking-prevention)
   - [5. System Audit Logging & Incident Tracking](#5-system-audit-logging--incident-tracking)
+- [Observability & System Monitoring](#observability--system-monitoring)
+  - [Vercel Serverless Monitoring & Performance Insights](#vercel-serverless-monitoring--performance-insights)
+- [CI/CD Pipeline & GitHub Actions](#cicd-pipeline--github-actions)
+  - [PR Gatekeeper & Automated Build Validation](#pr-gatekeeper--automated-build-validation)
+  - [Vercel Production Deployment Automation](#vercel-production-deployment-automation)
+- [Development Quality & Pre-Commit Hooks (Husky)](#development-quality--pre-commit-hooks-husky)
+  - [Pre-Commit Verification Gates](#pre-commit-verification-gates)
+  - [Granular Bypass Environment Variables](#granular-bypass-environment-variables)
 - [Comprehensive User Flows & Lifecycle Diagrams](#comprehensive-user-flows--lifecycle-diagrams)
   - [Lifecycle Sequence Diagram](#lifecycle-sequence-diagram)
   - [Flow 1: User Onboarding, MFA Enrollment & 2-Step Login Handshake](#flow-1-user-onboarding-mfa-enrollment--2-step-login-handshake)
@@ -35,9 +47,13 @@ A robust, enterprise-grade Telemedicine and Doctor Consultation Backend built wi
   - [Prescription Operations](#prescription-operations)
   - [Audit Log Operations](#audit-log-operations)
   - [Admin Analytics Operations](#admin-analytics-operations)
+- [API Documentation & Testing with Bruno](#api-documentation--testing-with-bruno)
+  - [Bruno Collection Architecture](#bruno-collection-architecture)
+  - [Environment Configuration & Variables](#environment-configuration--variables)
+  - [Module Directory Breakdown](#module-directory-breakdown)
+  - [Automated API Testing with Bruno CLI](#automated-api-testing-with-bruno-cli)
 - [Environment Configuration](#environment-configuration)
 - [Getting Started](#getting-started)
-- [Testing & Bruno Collection](#testing--bruno-collection)
 
 ---
 
@@ -72,6 +88,117 @@ Amrutam API provides an end-to-end telemedicine backend platform connecting pati
   - `helmet`, `cors`, and `bcrypt` password hashing
 - **Validation**: `class-validator` & `class-transformer` with global validation pipes
 - **Runtime**: [Bun](https://bun.sh/) & Node.js (v20+)
+
+---
+
+## Feature-Based Architecture & Directory Structure
+
+The Amrutam API is designed according to **Feature-Driven Development (FDD)** and **Vertical Slice Architecture** principles. Rather than organizing code by horizontal technical layers (all controllers in one directory, all services in another), each clinical domain is packaged as a high-cohesion, low-coupling feature module.
+
+### Architectural Principles
+
+1. **Domain Feature Slicing (`src/features/`)**:
+   - Every business capability (`auth`, `doctor`, `consultation`, `payment`, `prescription`, `availability-slot`, `analytics`, `audit-log`, `profile`) is an autonomous domain module containing its own module registration, GraphQL resolvers, business services, input DTOs, response entities, and unit tests.
+   - Cross-domain interactions occur cleanly through service dependency injection or repository references without tight coupling.
+
+2. **Strict Separation of Database Schemas vs GraphQL Surface**:
+   - **Database Schemas (`src/schemas/`)**: Define the physical relational model in PostgreSQL via TypeORM decorators (`@Entity()`, `@Column()`, `@OneToMany()`, `@JoinColumn()`).
+   - **GraphQL Input DTOs (`src/features/*/dto/`)**: Define and enforce incoming mutation and query argument validation using `class-validator` and `class-transformer`.
+   - **GraphQL Object Entities (`src/features/*/entities/`)**: Define the outgoing GraphQL response shapes via `@ObjectType()` and `@Field()`, ensuring that database internals (e.g. hashed passwords, internal tokens) are never unintentionally leaked to clients.
+
+3. **Core Infrastructure vs Common Primitives**:
+   - **`src/core/`**: Central infrastructure engines (TypeORM database bootstrap, Redis caching client, Apollo GraphQL driver setup, Helmet/CORS security, Cloudinary media CDN, and request context middleware).
+   - **`src/common/`**: Reusable domain primitives including guards (`JwtAuthGuard`, `RolesGuard`), custom decorators (`@CurrentUser()`, `@Roles()`, `@Public()`), domain enums (`Role`, `ConsultationStatus`), and standard pagination DTOs.
+   - **`src/utils/`**: Deterministic utility functions for cryptographic hashing, TOTP MFA secret derivation, HTTP-only cookie management, and centralized error logging.
+
+---
+
+### Directory & File Structure
+
+```text
+api/
+├── .bruno/                              # Bruno GraphQL API Collection & testing environment
+├── .github/
+│   └── workflows/
+│       └── deploy-vercel.yml            # CI/CD GitHub Actions pipeline
+├── .husky/
+│   └── pre-commit                       # Pre-commit hook: Lint-staged, Build & Security Audit
+├── src/
+│   ├── app.module.ts                    # Root NestJS application module wiring all features
+│   ├── main.ts                          # Bootstrap entry point (Helmet, CORS, ValidationPipe)
+│   │
+│   ├── common/                          # Shared domain primitives & cross-cutting contracts
+│   │   ├── decorator/                   # Custom decorators (@CurrentUser, @Roles, @Public)
+│   │   ├── enum/                        # Global enums (Role, ConsultationStatus, PaymentStatus)
+│   │   ├── gaurds/                      # Authorization guards (JwtAuthGuard, RolesGuard)
+│   │   └── pagination/                  # Standardized Relay-style / offset pagination DTOs
+│   │
+│   ├── core/                            # Infrastructure adapters & third-party integrations
+│   │   ├── cloudinary/                  # Cloudinary image & document upload service
+│   │   ├── context/                     # GraphQL execution context extraction
+│   │   ├── database/                    # TypeORM PostgreSQL connection configuration
+│   │   ├── graphql/                     # Apollo Server Code-First driver setup
+│   │   ├── middleware/                  # HTTP & cookie-parsing middlewares
+│   │   ├── redis/                       # Distributed Redis cache & mutex client
+│   │   └── security/                    # Helmet headers, rate limiting, and CORS policy
+│   │
+│   ├── features/                        # Domain-driven vertical feature slices
+│   │   ├── analytics/                   # Admin executive KPI aggregation & reporting
+│   │   │   ├── dto/                     # Analytics filter inputs
+│   │   │   ├── entities/                # GraphQL ObjectTypes for KPI dashboards
+│   │   │   ├── analytics.module.ts
+│   │   │   ├── analytics.resolver.ts
+│   │   │   ├── analytics.service.ts
+│   │   │   └── analytics.service.spec.ts
+│   │   ├── audit-log/                   # Error tracking, audit log queries & resolution
+│   │   ├── auth/                        # Registration, login, JWT issuance, MFA / 2FA TOTP
+│   │   ├── availability-slot/           # Doctor slot generation, bulk slots & concurrency locks
+│   │   ├── consultation/                # Patient bookings, status transitions & auto-expiry
+│   │   ├── doctor/                      # Doctor credentials, verification & search
+│   │   ├── health/                      # Uptime probes & database health inspection
+│   │   ├── payment/                     # Payment intent creation, processing & refund flows
+│   │   ├── prescription/                # Structured digital prescriptions with medications
+│   │   └── profile/                     # User & patient demographic profile management
+│   │
+│   ├── schemas/                         # TypeORM relational entities (PostgreSQL tables)
+│   │   ├── audit_log.schema.ts          # audit_logs table
+│   │   ├── availability_slot.schema.ts  # availability_slots table
+│   │   ├── consultation.schema.ts       # consultations table
+│   │   ├── doctor.schema.ts             # doctors table
+│   │   ├── payment.schema.ts            # payments table
+│   │   ├── prescription.schema.ts       # prescriptions table
+│   │   ├── profile.schema.ts            # profiles table
+│   │   ├── user.schema.ts               # users table
+│   │   └── schemas.ts                   # Central entity barrel export for TypeORM
+│   │
+│   └── utils/                           # Pure utility functions
+│       ├── cookie/                      # HTTP-only cookie serialization
+│       ├── crypto/                      # Password hashing & token encryption
+│       ├── error/                       # Centralized error handling & audit capture
+│       └── mfa/                         # TOTP QR-code generation & secret validation
+│
+├── dist/                                # Compiled JavaScript build artifacts
+├── nest-cli.json                        # NestJS CLI configuration
+├── package.json                         # Scripts (lint, build, audit) and dependencies
+├── tsconfig.json                        # TypeScript strict compiler configuration
+└── vercel.json                          # Vercel serverless deployment routing config
+```
+
+---
+
+### Feature Module Anatomy
+
+Each domain feature inside `src/features/<feature-name>/` maintains a consistent internal topology:
+
+| File / Directory | Responsibility | Example (`src/features/consultation`) |
+| :--- | :--- | :--- |
+| `*.module.ts` | Configures NestJS DI container and registers TypeORM repositories. | `consultation.module.ts` |
+| `*.resolver.ts` | Defines GraphQL Query and Mutation entry points, applying `@Roles` and guards. | `consultation.resolver.ts` |
+| `*.service.ts` | Houses business rules, transactional mutations, concurrency locks, and queries. | `consultation.service.ts` |
+| `*.resolver.spec.ts` | Unit tests verifying resolver responses, argument validation, and guards. | `consultation.resolver.spec.ts` |
+| `*.service.spec.ts` | Comprehensive test suite verifying business logic, mocks, and edge cases. | `consultation.service.spec.ts` |
+| `dto/` | Input argument types annotated with `class-validator` for request payload sanitization. | `book-consultation.input.ts` |
+| `entities/` | GraphQL `@ObjectType()` definitions returned to clients across operations. | `consultation.entity.ts` |
 
 ---
 
@@ -248,20 +375,20 @@ The platform enforces a Defense-in-Depth, Zero-Trust architectural design across
 
 ```mermaid
 graph TD
-    Client[Client Request] --> Helmet[Helmet & CORS Middleware]
-    Helmet --> PublicGuard{PublicApiGuard}
-    PublicGuard -- "@Public()" --> Resolver[GraphQL Resolver Execution]
-    PublicGuard -- Protected --> TokenExtract[Extract JWT from Cookie or Header]
-    TokenExtract --> JWTVerify{Verify JWT Signature & Expiry}
-    JWTVerify -- Invalid / Expired --> 401[401 Unauthorized]
-    JWTVerify -- Valid --> UserStatusCheck{Check User Status}
-    UserStatusCheck -- SUSPENDED / INACTIVE --> 403[403 Forbidden]
-    UserStatusCheck -- ACTIVE --> RolesGuard{RolesGuard}
-    RolesGuard -- Role Mismatch --> 403Role[403 Forbidden - Insufficient Permissions]
-    RolesGuard -- Role Authorized --> Decorator[Inject @CurrentUserId()]
+    Client["Client Request"] --> Helmet["Helmet & CORS Middleware"]
+    Helmet --> PublicGuard{"PublicApiGuard"}
+    PublicGuard -->|"@Public() Endpoint"| Resolver["GraphQL Resolver Execution"]
+    PublicGuard -->|"Protected Endpoint"| TokenExtract["Extract JWT from Cookie or Header"]
+    TokenExtract --> JWTVerify{"Verify JWT Signature & Expiry"}
+    JWTVerify -->|"Invalid or Expired"| Err401["401 Unauthorized"]
+    JWTVerify -->|"Valid Token"| UserStatusCheck{"Check User Status"}
+    UserStatusCheck -->|"Suspended or Inactive"| Err403["403 Forbidden"]
+    UserStatusCheck -->|"Active User"| RolesGuard{"RolesGuard"}
+    RolesGuard -->|"Role Mismatch"| ErrRole["403 Forbidden - Insufficient Permissions"]
+    RolesGuard -->|"Role Authorized"| Decorator["Inject @CurrentUserId()"]
     Decorator --> Resolver
-    Resolver --> Service[Service Layer with handleServiceError]
-    Service -- Exception Caught --> AuditLog[(PostgreSQL audit_logs)]
+    Resolver --> Service["Service Layer with handleServiceError"]
+    Service -->|"Exception Caught"| AuditLog[("PostgreSQL audit_logs")]
 ```
 
 ### 1. Zero-Trust Access Pipeline
@@ -363,6 +490,83 @@ The API integrates real-time error auditing directly into `handleServiceError`:
 
 ---
 
+## Observability & System Monitoring
+
+Amrutam API integrates real-time execution insights and telemetry across serverless production infrastructure:
+
+### Vercel Serverless Monitoring & Performance Insights
+
+When deployed to Vercel, the NestJS application runs as a high-performance serverless function, monitored through native Vercel telemetry:
+
+- **Function Invocations & Cold-Start Analysis**: Tracks execution durations, cold-start latency percentiles (p50, p90, p99), and memory usage against configured thresholds.
+- **Real-Time Edge Logs**: Live streaming of application stdout/stderr logs with full search and severity filtering (`ERROR`, `WARN`, `INFO`).
+- **Speed Insights & Web Vitals**: Analyzes end-to-end response times and TTFB (Time to First Byte) for GraphQL requests across global edge regions.
+- **Alert Policies**: Configured alerts notify engineering via Slack, Discord, or email when error rate thresholds or latency spikes exceed acceptable SLOs.
+
+---
+
+## CI/CD Pipeline & GitHub Actions
+
+The repository employs a fully automated Continuous Integration and Continuous Deployment (CI/CD) pipeline managed via GitHub Actions ([.github/workflows/deploy-vercel.yml](file:///e:/Amrutam-API/.github/workflows/deploy-vercel.yml)).
+
+### PR Gatekeeper & Automated Build Validation
+
+Every Pull Request targeting `main` that modifies `api/**` triggers the `build` job:
+1. **Environment Setup**: Provisions Ubuntu runner with **Node.js 24** and **Bun v2**.
+2. **Deterministic Installs**: Runs `bun install --frozen-lockfile` to ensure exact dependency lockfile parity.
+3. **Compilation Check**: Executes `bun run build` to validate TypeScript strict typechecking, decorators, and NestJS build output.
+4. **Merge Protection**: GitHub branch protection rules require this check to pass before PRs can be merged into `main`.
+
+### Vercel Production Deployment Automation
+
+Upon pushing or merging a pull request into `main`, the `deploy` job executes with concurrency locking (`cancel-in-progress: false`):
+1. **Secret Validation**: Asserts that `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and `VERCEL_TOKEN` are present in GitHub Actions secrets.
+2. **Environment Pull**: Runs `vercel pull --yes --environment=production` to fetch production environment configuration.
+3. **Production Artifact Build**: Compiles the optimized serverless bundle with `vercel build --prod`.
+4. **Atomic Deployment**: Publishes the prebuilt deployment to Vercel production with zero downtime (`vercel deploy --prebuilt --prod`).
+
+---
+
+## Development Quality & Pre-Commit Hooks (Husky)
+
+The repository integrates **Husky** and **lint-staged** ([api/.husky/pre-commit](file:///e:/Amrutam-API/api/.husky/pre-commit)) to enforce strict code hygiene, compilation integrity, and supply chain security prior to any commit:
+
+### Pre-Commit Verification Gates
+
+Before git allows any commit to be created, three automated gates execute sequentially:
+
+1. **ESLint / Oxlint Error Check**: Scans all staged TypeScript files (`npx lint-staged` with `oxlint --type-aware`) to catch and intercept syntax errors, unused variables, formatting problems, and floating promises before they enter git history.
+2. **NestJS Build Compilation Check**: Runs the complete TypeScript compiler and NestJS build (`npm run build` / `nest build`) to ensure that all modules, services, resolvers, and decorators compile cleanly with zero TypeScript errors.
+3. **Dependency Vulnerability Security Audit**: Executes `npm audit --audit-level=high` to inspect all third-party dependencies for known high and critical vulnerabilities, ensuring that vulnerable packages are blocked from entering the codebase.
+
+```mermaid
+graph TD
+    Commit["git commit"] --> Gate1["1. ESLint / Oxlint Check<br/>(npx lint-staged)"]
+    Gate1 -->|Pass| Gate2["2. Build Compilation<br/>(npm run build)"]
+    Gate2 -->|Pass| Gate3["3. Security Audit<br/>(npm audit --audit-level=high)"]
+    Gate3 -->|Pass| CommitSuccess[" Commit Succeeded"]
+    
+    Gate1 -.->|Fail| Abort[" Commit Aborted"]
+    Gate2 -.->|Fail| Abort
+    Gate3 -.->|Fail| Abort
+```
+
+### Granular Bypass Environment Variables
+
+Each verification gate can be individually bypassed when necessary using environment variables:
+
+| Environment Variable | Target Gate | Description |
+| :--- | :--- | :--- |
+| `SKIP_PRE_COMMIT_LINT=1` | ESLint / Oxlint Check | Skips staged file linting |
+| `SKIP_PRE_COMMIT_BUILD=1` | NestJS Build Compilation | Skips TypeScript project compilation check |
+| `SKIP_PRE_COMMIT_AUDIT=1` | Dependency Security Audit | Skips high/critical vulnerability scanning |
+| `SKIP_PRE_COMMIT=1` | All Validation Gates | Skips all pre-commit hook checks |
+| `HUSKY=0` | Husky Framework | Native Husky bypass (temporarily disables all hooks) |
+
+These local pre-commit checks ensure local developer quality while leaving GitHub Actions CI/CD workflows as the immutable final authority on pull requests.
+
+---
+
 ## Comprehensive User Flows & Lifecycle Diagrams
 
 ### Lifecycle Sequence Diagram
@@ -424,7 +628,9 @@ sequenceDiagram
 
 ### Step-by-Step Flow Walkthrough
 
-#### 1. User Onboarding & Authentication
+#### Flow 1: User Onboarding, MFA Enrollment & 2-Step Login Handshake
+
+##### A. User Registration (Patient or Doctor)
 Both Patients and Doctors create accounts via the `signup` mutation. The API sets a secure HTTP-only `jwt_access_token` cookie and returns a confirmation message.
 
 **Doctor Signup Request:**
@@ -469,9 +675,99 @@ mutation PatientSignup($input: SignupDto!) {
 }
 ```
 
+##### B. Two-Factor Authentication Setup (Google Authenticator)
+Once authenticated, users can enroll in Two-Factor Authentication:
+
+1. **Generate MFA Secret & QR Code:**
+```graphql
+mutation GenerateMfaSecret {
+  generateMfaSecret {
+    secret
+    qr_code_url
+  }
+}
+```
+*Response:* Returns a Base32 manual entry `secret` and a Data URL PNG `qr_code_url` to scan in Google Authenticator or Authy.
+
+2. **Verify Code & Activate MFA:**
+The user enters the first 6-digit code shown in their app to activate 2FA and receive 8 single-use emergency backup recovery codes:
+```graphql
+mutation EnableMfa($input: VerifyMfaCodeDto!) {
+  enableMfa(input: $input) {
+    message
+    backup_codes
+  }
+}
+```
+*Variables:*
+```json
+{
+  "input": {
+    "code": "529148"
+  }
+}
+```
+*Response:*
+```json
+{
+  "data": {
+    "enableMfa": {
+      "message": "MFA has been successfully enabled on your account",
+      "backup_codes": [
+        "e4a1b2c3", "f5d6e7f8", "a9b0c1d2", "3e4f5a6b",
+        "7c8d9e0f", "1a2b3c4d", "5e6f7a8b", "9c0d1e2f"
+      ]
+    }
+  }
+}
+```
+
+##### C. 2-Step Login Handshake
+When an account with MFA enabled logs in:
+
+**Step 1: Submit Credentials**
+```graphql
+mutation Login($input: LoginDto!) {
+  login(input: $input) {
+    message
+    mfa_required
+    mfa_ticket
+  }
+}
+```
+*Response:*
+```json
+{
+  "data": {
+    "login": {
+      "message": "MFA verification required",
+      "mfa_required": true,
+      "mfa_ticket": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+  }
+}
+```
+
+**Step 2: Submit TOTP or Backup Code with Ticket**
+```graphql
+mutation VerifyMfaLogin($input: VerifyMfaLoginDto!) {
+  verifyMfaLogin(input: $input)
+}
+```
+*Variables:*
+```json
+{
+  "input": {
+    "mfa_ticket": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "code": "529148"
+  }
+}
+```
+*Result:* Returns `"Logged in successfully"`, writes the HTTP-only `jwt_access_token` cookie, records `last_login_at`, and prevents token replay via Redis.
+
 ---
 
-#### 2. Doctor Profile & Availability Slot Creation
+#### Flow 2: Doctor Profile Setup & Availability Slot Generation
 Once logged in, a doctor creates their medical profile and generates booking slots for patients.
 
 **Create Doctor Profile:**
@@ -513,7 +809,7 @@ mutation BulkCreateSlots($input: BulkCreateSlotsDto!) {
 
 ---
 
-#### 3. Discovery & Consultation Booking
+#### Flow 3: Patient Discovery, Concurrency Locking & Consultation Booking
 Patients discover doctors and inspect open slots without requiring authentication (`@Public()`), then book an appointment using their authenticated session.
 
 **List Verified Doctors:**
@@ -562,11 +858,11 @@ mutation BookConsultation($input: CreateConsultationDto!) {
   }
 }
 ```
-*Result:* Slot status transitions to `BOOKED`, consultation is recorded as `PENDING`.
+*Result:* Slot status transitions atomically to `BOOKED`, consultation is recorded as `PENDING_PAYMENT` with a temporary `hold_expires_at` reservation lock.
 
 ---
 
-#### 4. Payment Initiation & Processing
+#### Flow 4: Payment Initiation & Processing
 The patient initiates a payment for the consultation. The mutation returns both a confirmation message and the newly created `payment_id`.
 
 **Initiate Payment:**
@@ -623,7 +919,7 @@ mutation ProcessPayment($input: ProcessPaymentDto!) {
 
 ---
 
-#### 5. Consultation Execution & Digital Prescription
+#### Flow 5: Consultation Execution & Digital Prescription Issuance
 The doctor completes the consultation session and issues a digital prescription with medication instructions.
 
 **Complete Consultation (Doctor):**
@@ -694,18 +990,85 @@ query MyPrescriptions {
 
 ---
 
+#### Flow 6: Admin Executive Analytics & Incident Audit
+Administrators monitor business performance KPIs, doctor capacity metrics, revenue breakdowns, and resolve system exceptions.
+
+**Admin Query Dashboard Summary:**
+```graphql
+query AdminDashboardSummary($filter: AnalyticsFilterInput) {
+  adminDashboardSummary(filter: $filter) {
+    total_revenue
+    revenue_growth_percentage
+    total_consultations
+    completed_consultations
+    cancellation_rate
+    total_patients
+    new_patients_in_period
+    total_doctors
+    pending_doctor_verifications
+    slot_utilization_rate
+    active_users_last_30_days
+  }
+}
+```
+
+**Admin Inspects System Errors:**
+```graphql
+query GetAuditLogs($action: AuditLogAction) {
+  getAuditLogs(action: $action, limit: 10, offset: 0) {
+    audit_id
+    api_name
+    error
+    action
+    user_id
+    ip_address
+    created_at
+  }
+}
+```
+
+**Admin Resolves Incident:**
+```graphql
+mutation UpdateAuditAction($auditId: ID!, $action: AuditLogAction!) {
+  updateAuditLogAction(auditId: $auditId, action: $action)
+}
+```
+*Variables:*
+```json
+{
+  "auditId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "action": "RESOLVED"
+}
+```
+*Result:* `"Audit log action updated successfully"`
+
+---
+
 ## GraphQL Operations Reference
 
 All GraphQL queries and mutations are served at `/graphql`.
 
-### Auth Operations
+### Auth & MFA Operations
 
 | Type | Operation | Access | Description |
 |---|---|---|---|
-| `Mutation` | `signup(input: SignupDto!): String!` | `@Public()` | Creates user credentials and profile; sets JWT cookie; returns confirmation. |
-| `Mutation` | `login(input: LoginDto!): String!` | `@Public()` | Validates credentials; sets JWT cookie; returns confirmation. |
+| `Mutation` | `signup(input: SignupDto!): String!` | `@Public()` | Registers user credentials and profile; sets JWT cookie; returns confirmation. |
+| `Mutation` | `login(input: LoginDto!): LoginResponse!` | `@Public()` | Validates credentials. Returns `mfa_required: true` and `mfa_ticket` if 2FA active, or sets session cookie. |
+| `Mutation` | `verifyMfaLogin(input: VerifyMfaLoginDto!): String!` | `@Public()` | Verifies 6-digit TOTP code or backup code with `mfa_ticket` to complete 2FA login. |
+| `Mutation` | `generateMfaSecret: MfaSetupResponse!` | Protected | Generates Base32 TOTP secret and QR code PNG Data URL for Google Authenticator. |
+| `Mutation` | `enableMfa(input: VerifyMfaCodeDto!): MfaEnableResponse!` | Protected | Verifies first TOTP code, enables 2FA, and returns 8 single-use emergency backup recovery codes. |
+| `Mutation` | `disableMfa(input: VerifyMfaCodeDto!): String!` | Protected | Verifies current TOTP code and disables 2FA on the account. |
 | `Mutation` | `logout: String!` | `@Public()` | Clears `jwt_access_token` authentication cookie. |
-| `Query` | `me: UserEntity!` | Protected | Retrieves authenticated user account and nested profile. |
+| `Query` | `me: UserEntity!` | Protected | Retrieves authenticated user account, status, role, and nested profile. |
+
+---
+
+### Profile Operations
+
+| Type | Operation | Access | Description |
+|---|---|---|---|
+| `Query` | `myProfile: ProfileEntity!` | `PATIENT`, `DOCTOR`, `ADMIN` | Retrieves current user personal details, image URL, and contact info. |
+| `Mutation` | `updateProfile(input: UpdateProfileInput!): String!` | `PATIENT`, `DOCTOR`, `ADMIN` | Modifies name, gender, phone, date of birth, address, or profile image. |
 
 ---
 
@@ -833,44 +1196,42 @@ query AdminDashboardSummary($filter: AnalyticsFilterInput) {
 
 ---
 
-## Authentication & Role-Based Access Control
-
-The API employs a zero-trust security model:
-
-1. **Global `PublicApiGuard`**: Every GraphQL resolver is protected by default. Only operations decorated with `@Public()` allow unauthenticated access.
-2. **`RolesGuard`**: Evaluates user roles against `@Roles(...)` metadata. Supports single or multiple authorized roles (e.g. `@Roles(UserRole.DOCTOR, UserRole.PATIENT)`).
-3. **Dual Token Delivery**:
-   - Web browsers automatically send the HTTP-only `jwt_access_token` cookie.
-   - Mobile and API clients can send `Authorization: Bearer <token>`.
-4. **`@CurrentUserId()`**: Resolvers extract the authenticated user UUID directly from context, eliminating repetitive credential validation logic.
-
----
-
 ## Environment Configuration
 
-Create or update `.env` in the `api` root directory:
+Create or update `.env` in the `api` root directory (see `.example.env` for reference):
 
 ```env
-# Server
+# Server & Runtime
 PORT=8000
 NODE_ENV=development
 GRAPHQL_PLAYGROUND=true
+CORS_ORIGIN=http://localhost:3000
 
 # Database (PostgreSQL / Supabase)
 DATABASE_URL=postgresql://<username>:<password>@<host>:5432/<database>
 DATABASE_SSL=true
+DATABASE_POOL_MAX=10
 
-# Redis (set REDIS_URL or REDIS_HOST/REDIS_PORT; password is optional)
+# Redis Cache & Concurrency Control
+REDIS_URL=redis://localhost:6379
 REDIS_HOST=localhost
 REDIS_PORT=6379
-# REDIS_PASSWORD=your-redis-password
+REDIS_PASSWORD=
 
-# Authentication
+# Authentication & JWT
 JWT_SECRET=super-secure-jwt-secret-key-min-32-chars
 JWT_EXPIRES_IN=7d
 JWT_COOKIE_NAME=jwt_access_token
 JWT_COOKIE_MAX_AGE=604800000
 BCRYPT_SALT_ROUNDS=10
+
+# Multi-Factor Authentication (MFA / 2FA)
+MFA_ENABLED=true
+
+# Cloudinary Storage (Doctor & Patient Profiles)
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 
 # NestJS Observability (APM & Distributed Tracing)
 OBSERVE_SERVICE_ID=amrutam-api
@@ -922,55 +1283,17 @@ workers, and atomic slot locking under concurrent requests. It uses temporary,
 unique Redis keys and removes them after the test. This is a Redis smoke test;
 the API does not currently configure a production job-queue library.
 
-### 5. Deploying the Docker API to Render for Free
+### 5. Deploying NestJS to Vercel
 
-This repository includes a Render Blueprint (`render.yaml`) and a GitHub Actions
-workflow. Render builds and runs the Docker image directly from this GitHub
-repository; a separate Docker registry is not required.
+Vercel supports NestJS as a serverless function. This is the primary cloud deployment platform for Amrutam API, automated through GitHub Actions ([.github/workflows/deploy-vercel.yml](file:///e:/Amrutam-API/.github/workflows/deploy-vercel.yml)).
 
-1. Push or merge the changes to the `main` branch on GitHub.
-2. In Render, create a **Blueprint** and connect this repository. Confirm the
-   `amrutam-api` web service from `render.yaml`.
-3. Set the requested `DATABASE_URL` and `JWT_SECRET` values in Render. Use a
-   PostgreSQL connection URL and a strong, unique JWT secret. Configure
-   `REDIS_URL` if using a hosted Redis instance.
-4. In the Render service settings, create a deploy hook. Add its URL to the
-   GitHub repository as an Actions secret named `RENDER_DEPLOY_HOOK`
-   (**Settings → Secrets and variables → Actions**).
-5. Push to `main` (or run the workflow manually). GitHub Actions builds the
-   Docker image first and triggers Render only after the build succeeds.
+1. Create a Vercel project and import this GitHub repository. Set the Vercel project **Root Directory** to `api`.
+2. In Vercel project settings, add the required environment variables (`DATABASE_URL`, `JWT_SECRET`, `DATABASE_SSL`, `MFA_ENABLED`, etc.).
+3. In the Vercel dashboard, copy the account/team ID and project ID. Create a Vercel access token.
+4. Add these GitHub Actions repository secrets under **Settings → Secrets and variables → Actions**: `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and `VERCEL_TOKEN`.
+5. Pushes and merges to the `main` branch trigger the CI/CD pipeline, building the prebuilt package and deploying to production automatically with zero downtime.
 
-The `/health` endpoint is used for Render health checks. Render's free web
-services can spin down when idle and may have other plan limits; availability
-and included free resources depend on Render's current plan. The API also needs
-an externally reachable PostgreSQL database, and Redis is optional.
-
-### 6. Deploying NestJS to Vercel
-
-Vercel supports NestJS as a serverless function. This deployment does not run
-the Docker container.
-
-1. Create a Vercel project and import this GitHub repository. Set the Vercel
-   project **Root Directory** to `api`.
-2. In Vercel project settings, add the runtime environment variables required
-   by the API, including `DATABASE_URL` and a strong, unique `JWT_SECRET`.
-   Configure `DATABASE_SSL`, `REDIS_URL`, and other values as needed.
-3. In the Vercel dashboard, copy the account/team ID and project ID. Create a
-   Vercel access token.
-4. Add these GitHub Actions repository secrets under **Settings → Secrets and
-   variables → Actions**: `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and
-   `VERCEL_TOKEN`.
-5. Disable Vercel's automatic Git deployments if you want GitHub Actions to
-   gate production deploys; otherwise, Vercel may also deploy the same push
-   independently.
-6. Push or merge changes to `main`. The workflow builds the NestJS application
-   and deploys to Vercel only after the build succeeds. Pull requests to `main`
-   run the build check without deploying.
-
-Serverless deployments have platform limits and are not a persistent Docker
-container.
-
-### 7. Running with Docker & Docker Compose
+### 6. Running with Docker & Docker Compose
 
 #### Using Docker Compose (API + PostgreSQL):
 ```bash
@@ -989,22 +1312,114 @@ docker run -p 8000:8000 --env-file .env amrutam-api
 
 ---
 
-## Testing & Bruno Collection
+## API Documentation & Testing with Bruno
 
-A full suite of pre-configured [Bruno](https://usebruno.com/) API collections is available under `api/.bruno/`:
+Amrutam API provides a complete, production-ready [Bruno](https://usebruno.com/) API collection located in `api/.bruno/`. Bruno is a fast, Git-friendly, open-source API client that stores request definitions as human-readable `.bru` files directly inside the repository.
 
-- `.bruno/auth/`
-  - `doctor-signup.bru`, `patient-signup.bru`, `admin-signup.bru`
-  - `login.bru`, `logout.bru`, `me.bru`
-- `.bruno/doctor/`
-  - `create-doctor-profile.bru`, `update-doctor-profile.bru`, `my-doctor-profile.bru`, `get-doctor-by-id.bru`, `list-doctors.bru`
-- `.bruno/availability-slot/`
-  - `create-availability-slot.bru`, `bulk-create-availability-slots.bru`, `update-availability-slot.bru`, `delete-availability-slot.bru`, `get-doctor-availability.bru`, `my-availability-slots.bru`, `get-availability-slot-by-id.bru`
-- `.bruno/consultation/`
-  - `book-consultation.bru`, `reschedule-consultation.bru`, `cancel-consultation.bru`, `complete-consultation.bru`, `get-consultation-by-id.bru`, `my-consultations.bru`
-- `.bruno/payment/`
-  - `create-payment.bru`, `process-payment.bru`, `refund-payment.bru`, `get-payment-by-id.bru`, `get-payments-by-consultation.bru`, `my-payments.bru`
-- `.bruno/prescription/`
-  - `create-prescription.bru`, `update-prescription.bru`, `get-prescription-by-id.bru`, `get-prescriptions-by-consultation.bru`, `my-prescriptions.bru`
-- `.bruno/audit-log/`
-  - `get-audit-logs.bru`, `get-audit-log-by-id.bru`, `get-audit-logs-by-api.bru`, `get-audit-logs-by-user.bru`, `update-audit-log-action.bru`, `record-audit-log.bru`
+### Bruno Collection Architecture
+
+The collection is organized by domain module, featuring pre-configured GraphQL operations, variables, headers, and environment definitions:
+
+```
+api/.bruno/
+├── bruno.json                      # Collection configuration
+├── environments/                   # Environment configurations
+│   └── local.bru                   # Local development variables
+├── auth/                           # Authentication & MFA requests
+├── profile/                        # User profile management
+├── doctor/                         # Doctor profiles & verified listings
+├── availability-slot/              # Doctor slots & availability
+├── consultation/                   # Booking & consultation lifecycle
+├── payment/                        # Payment initiation & settlement
+├── prescription/                   # Clinical prescriptions & medications
+├── audit-log/                      # Security audit logs & resolution
+└── admin-analytics/                # Executive dashboard & domain analytics
+```
+
+### Environment Configuration & Variables
+
+Select the `local` environment in Bruno (or create a cloud environment). The default variables configured in `api/.bruno/environments/local.bru` are:
+
+| Variable | Default Value | Description |
+|---|---|---|
+| `baseUrl` | `http://localhost:8000` | Root API host address |
+| `graphqlUrl` | `http://localhost:8000/graphql` | Apollo GraphQL endpoint |
+
+> **Note on Authentication**: The API automatically issues an HTTP-only `jwt_access_token` cookie upon login or MFA verification. Bruno automatically persists and transmits this cookie for subsequent protected requests.
+
+---
+
+### Module Directory Breakdown
+
+#### 1. Authentication & MFA (`.bruno/auth/`)
+- `patient-signup.bru`, `doctor-signup.bru`, `admin-signup.bru`: Create accounts across all system roles.
+- `login.bru`: Authenticates credentials; returns `mfa_required: true` and `mfa_ticket` if 2FA is active.
+- `generate-mfa-secret.bru`: Generates Base32 TOTP secret and QR code PNG Data URL.
+- `enable-mfa.bru`: Verifies first TOTP code and returns 8 emergency recovery backup codes.
+- `verify-mfa-login.bru`: Submits 6-digit TOTP code or backup code with `mfa_ticket` to complete 2FA login.
+- `disable-mfa.bru`: Disables 2FA upon submitting current TOTP code.
+- `me.bru`: Fetches authenticated user identity and nested profile.
+- `logout.bru`: Clears session cookie.
+
+#### 2. User Profiles (`.bruno/profile/`)
+- `my-profile.bru`: Queries current user profile, phone, address, and profile image URL.
+- `update-profile.bru`: Updates profile name, gender, phone, date of birth, address, or Cloudinary image.
+
+#### 3. Doctor Management (`.bruno/doctor/`)
+- `create-doctor-profile.bru`: Registers medical license, specialization, experience, fee, and bio.
+- `update-doctor-profile.bru`: Modifies doctor practice information.
+- `my-doctor-profile.bru`: Retrieves currently authenticated doctor profile.
+- `get-doctor-by-id.bru`: Public query to inspect doctor details.
+- `list-doctors.bru`: Public listing of all approved medical practitioners.
+
+#### 4. Availability Slots (`.bruno/availability-slot/`)
+- `create-availability-slot.bru`: Creates a single availability slot.
+- `bulk-create-availability-slots.bru`: Automatically generates consecutive 30-minute appointment slots with overlap protection.
+- `get-doctor-availability.bru`: Queries upcoming open slots for a specific doctor.
+- `my-availability-slots.bru`: Doctor queries their own slots.
+- `update-availability-slot.bru` & `delete-availability-slot.bru`: Manage slot timing and cancellation.
+
+#### 5. Consultations (`.bruno/consultation/`)
+- `book-consultation.bru`: Reserves an open slot with atomic lock and creates consultation (`PENDING_PAYMENT`).
+- `reschedule-consultation.bru`: Atomically releases previous slot and reserves a new one.
+- `cancel-consultation.bru`: Cancels consultation and restores slot to `AVAILABLE`.
+- `complete-consultation.bru`: Doctor records consultation notes and marks session `COMPLETED`.
+- `my-consultations.bru` & `get-consultation-by-id.bru`: Consultations query.
+
+#### 6. Payments (`.bruno/payment/`)
+- `create-payment.bru`: Initiates a payment; returns `payment_id` and payment instructions.
+- `process-payment.bru`: Simulates payment gateway callback/webhook, marks payment `PAID`, and confirms consultation.
+- `refund-payment.bru`: Issues a full refund for a settled transaction.
+- `my-payments.bru`: Patient and doctor transaction history.
+
+#### 7. Digital Prescriptions (`.bruno/prescription/`)
+- `create-prescription.bru`: Doctor issues a structured digital prescription with multiple medications (name, dosage, frequency, duration, instructions).
+- `update-prescription.bru`: Modifies prescription details.
+- `my-prescriptions.bru`: Patient views active and past prescriptions.
+
+#### 8. Audit & Security Logs (`.bruno/audit-log/`)
+- `get-audit-logs.bru`: Admin queries paginated error and audit logs.
+- `update-audit-log-action.bru`: Admin transitions status (`PENDING` $\rightarrow$ `INVESTIGATING` $\rightarrow$ `RESOLVED`).
+- `record-audit-log.bru`: Manual audit entry recording.
+
+#### 9. Admin Analytics (`.bruno/admin-analytics/`)
+- `get-dashboard-summary.bru`: Executive KPI summary (revenue, growth %, consults, doctors, patients, slot utilization, active users).
+- `get-revenue-analytics.bru`: In-depth financial time-series, payment methods, transaction values.
+- `get-consultation-analytics.bru`: Appointment timeline, completion rate, status distribution, peak hours.
+- `get-doctor-analytics.bru`: Verification queue, specialization breakdown, slot capacity, top 10 performers.
+- `get-patient-analytics.bru`: Patient growth trends, repeat consultation cohorts, retention rate, gender demographics.
+- `get-clinical-and-system-analytics.bru`: Digital prescription rate, top diagnosed conditions, audit error rates, failing API endpoints.
+
+---
+
+### Automated API Testing with Bruno CLI
+
+The entire Bruno collection can be executed headlessly in CI/CD pipelines or locally using the `@usebruno/cli`:
+
+```bash
+# Install Bruno CLI globally
+npm install -g @usebruno/cli
+
+# Run all API requests in the collection against local environment
+bru run api/.bruno --env local
+```
