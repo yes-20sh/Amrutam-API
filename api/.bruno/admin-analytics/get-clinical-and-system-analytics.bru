@@ -1,0 +1,45 @@
+meta {
+  name: Get Clinical and System Analytics
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query AdminClinicalAndSystemAnalytics($filter: AnalyticsFilterInput) {
+    adminClinicalAndSystemAnalytics(filter: $filter) {
+      total_prescriptions
+      prescription_issuance_rate
+      top_diagnoses {
+        diagnosis
+        count
+      }
+      total_system_errors
+      errors_by_action {
+        action
+        count
+      }
+      top_failing_apis {
+        api_name
+        error_count
+      }
+      errors_timeline {
+        date
+        count
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "filter": {
+      "granularity": "DAY"
+    }
+  }
+}

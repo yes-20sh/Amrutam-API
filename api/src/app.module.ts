@@ -4,6 +4,8 @@ import { PublicApiGuard } from './common/gaurds/public-api.guard';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import helmet from 'helmet';
 import cors from 'cors';
+import { createObserveModule } from '@nestjs/observe';
+
 import { GraphqlModule } from './core/graphql/graphql.module';
 import { DatabaseModule } from './core/database/database.module';
 import { PaginationModule } from './common/pagination/pagination.module';
@@ -15,9 +17,19 @@ import { ConsultationModule } from './features/consultation/consultation.module'
 import { PrescriptionModule } from './features/prescription/prescription.module';
 import { PaymentModule } from './features/payment/payment.module';
 import { AuditLogModule } from './features/audit-log/audit-log.module';
+import { AnalyticsModule } from './features/analytics/analytics.module';
+
+export const { ObserveModule, ObserveInstrument } = createObserveModule({
+  attachTraceIdToLogs: true,
+});
 
 @Module({
   imports: [
+    ObserveModule.forRoot({
+      serviceId: process.env.OBSERVE_SERVICE_ID || 'amrutam-api',
+      appKey: process.env.OBSERVE_APP_KEY,
+      appSecret: process.env.OBSERVE_APP_SECRET,
+    }),
     GraphqlModule,
     DatabaseModule,
     PaginationModule,
@@ -28,6 +40,7 @@ import { AuditLogModule } from './features/audit-log/audit-log.module';
     PrescriptionModule,
     PaymentModule,
     AuditLogModule,
+    AnalyticsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })

@@ -503,6 +503,38 @@ query GetAuditLogs($action: AuditLogAction, $limit: Int, $offset: Int) {
 
 ---
 
+### Admin Analytics Operations
+
+| Type | Operation | Access | Description |
+|---|---|---|---|
+| `Query` | `adminDashboardSummary(filter: AnalyticsFilterInput): AdminDashboardSummaryEntity!` | `ADMIN` | Top-level KPI overview (revenue, growth %, consults, doctors, patients, slot utilization, active users). |
+| `Query` | `adminRevenueAnalytics(filter: AnalyticsFilterInput): RevenueAnalyticsEntity!` | `ADMIN` | In-depth settled revenue time-series, payment methods, transaction values, and payment status breakdown. |
+| `Query` | `adminConsultationAnalytics(filter: AnalyticsFilterInput): ConsultationAnalyticsEntity!` | `ADMIN` | Appointment volume timeline, completion/cancellation rates, status distribution, and peak hours. |
+| `Query` | `adminDoctorAnalytics(filter: AnalyticsFilterInput): DoctorAnalyticsEntity!` | `ADMIN` | Doctor verification queue, specialization breakdown, slot capacity metrics, and top 10 doctor performers. |
+| `Query` | `adminPatientAnalytics(filter: AnalyticsFilterInput): PatientAnalyticsEntity!` | `ADMIN` | Patient growth trends, repeat consultation cohorts, retention rate, and gender demographic distribution. |
+| `Query` | `adminClinicalAndSystemAnalytics(filter: AnalyticsFilterInput): ClinicalAndSystemAnalyticsEntity!` | `ADMIN` | Digital prescription rate, top diagnosed conditions, audit error rates, and top failing API services. |
+
+```graphql
+# Example: Query Executive Dashboard Summary
+query AdminDashboardSummary($filter: AnalyticsFilterInput) {
+  adminDashboardSummary(filter: $filter) {
+    total_revenue
+    revenue_growth_percentage
+    total_consultations
+    completed_consultations
+    cancellation_rate
+    total_patients
+    new_patients_in_period
+    total_doctors
+    pending_doctor_verifications
+    slot_utilization_rate
+    active_users_last_30_days
+  }
+}
+```
+
+---
+
 ## Authentication & Role-Based Access Control
 
 The API employs a zero-trust security model:
@@ -536,6 +568,11 @@ JWT_EXPIRES_IN=7d
 JWT_COOKIE_NAME=jwt_access_token
 JWT_COOKIE_MAX_AGE=604800000
 BCRYPT_SALT_ROUNDS=10
+
+# NestJS Observability (APM & Distributed Tracing)
+OBSERVE_SERVICE_ID=amrutam-api
+OBSERVE_APP_KEY=your-observe-app-key
+OBSERVE_APP_SECRET=your-observe-app-secret
 ```
 
 ---
@@ -567,6 +604,23 @@ The Apollo GraphQL Sandbox / Playground will be accessible at:
 ```bash
 bun run build
 bun run start:prod
+```
+
+### 4. Running with Docker & Docker Compose
+
+#### Using Docker Compose (API + PostgreSQL):
+```bash
+docker compose up --build -d
+```
+The API will be available at `http://localhost:8000/graphql` and PostgreSQL at `localhost:5432`.
+
+#### Building and Running the Docker Image directly:
+```bash
+# Build the production image
+docker build -t amrutam-api .
+
+# Run container with environment configuration
+docker run -p 8000:8000 --env-file .env amrutam-api
 ```
 
 ---

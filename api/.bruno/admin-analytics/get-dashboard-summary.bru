@@ -1,0 +1,37 @@
+meta {
+  name: Get Dashboard Summary
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query AdminDashboardSummary($filter: AnalyticsFilterInput) {
+    adminDashboardSummary(filter: $filter) {
+      total_revenue
+      revenue_growth_percentage
+      total_consultations
+      completed_consultations
+      cancellation_rate
+      total_patients
+      new_patients_in_period
+      total_doctors
+      pending_doctor_verifications
+      slot_utilization_rate
+      active_users_last_30_days
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "filter": {
+      "granularity": "DAY"
+    }
+  }
+}

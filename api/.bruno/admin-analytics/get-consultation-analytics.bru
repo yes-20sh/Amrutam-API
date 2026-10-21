@@ -1,0 +1,47 @@
+meta {
+  name: Get Consultation Analytics
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query AdminConsultationAnalytics($filter: AnalyticsFilterInput) {
+    adminConsultationAnalytics(filter: $filter) {
+      total_consultations
+      completion_rate
+      cancellation_rate
+      consultations_by_status {
+        status
+        count
+      }
+      consultations_by_type {
+        type
+        count
+      }
+      timeline {
+        date
+        total
+        completed
+        cancelled
+      }
+      peak_hours {
+        hour
+        count
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "filter": {
+      "granularity": "DAY"
+    }
+  }
+}

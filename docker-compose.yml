@@ -1,0 +1,58 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amrutam_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      NODE_ENV: production
+      PORT: 8000
+      GRAPHQL_PLAYGROUND: "true"
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: amrutam_db
+      DATABASE_USER: amrutam_user
+      DATABASE_PASSWORD: amrutam_password
+      DATABASE_SSL: "false"
+      JWT_SECRET: super-secure-jwt-secret-key-change-this-in-production-min-32-chars
+      JWT_EXPIRES_IN: 7d
+      JWT_COOKIE_NAME: jwt_access_token
+      JWT_COOKIE_MAX_AGE: 604800000
+      BCRYPT_SALT_ROUNDS: 10
+      OBSERVE_SERVICE_ID: amrutam-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - amrutam_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: amrutam_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: amrutam_db
+      POSTGRES_USER: amrutam_user
+      POSTGRES_PASSWORD: amrutam_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - amrutam_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amrutam_user -d amrutam_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - amrutam_network
+
+volumes:
+  amrutam_pgdata:
+    driver: local
+
+networks:
+  amrutam_network:
+    driver: bridge

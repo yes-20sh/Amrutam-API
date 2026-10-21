@@ -1,0 +1,50 @@
+meta {
+  name: Get Doctor Analytics
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query AdminDoctorAnalytics($filter: AnalyticsFilterInput) {
+    adminDoctorAnalytics(filter: $filter) {
+      total_doctors
+      verification_breakdown {
+        status
+        count
+      }
+      specialization_breakdown {
+        specialization
+        count
+        percentage
+      }
+      capacity {
+        total_slots
+        booked_slots
+        available_slots
+        utilization_rate
+      }
+      top_doctors {
+        doctor_id
+        full_name
+        specialization
+        consultation_fee
+        completed_consultations
+        total_revenue
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "filter": {
+      "granularity": "DAY"
+    }
+  }
+}
