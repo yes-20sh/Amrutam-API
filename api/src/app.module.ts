@@ -2,12 +2,12 @@ import 'dotenv/config';
 import { APP_GUARD } from '@nestjs/core';
 import { PublicApiGuard } from './common/gaurds/public-api.guard';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import helmet from 'helmet';
-import cors from 'cors';
+import { helmetMiddleware } from './core/security/helmet.config';
+import { corsMiddleware } from './core/security/cors.config';
 import { createObserveModule } from '@nestjs/observe';
-
 import { GraphqlModule } from './core/graphql/graphql.module';
 import { DatabaseModule } from './core/database/database.module';
+import { RedisModule } from './core/redis/redis.module';
 import { PaginationModule } from './common/pagination/pagination.module';
 import { AuthModule } from './features/auth/auth.module';
 import { AuthMiddleware } from './core/middleware/auth.middleware';
@@ -29,9 +29,11 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
       serviceId: process.env.OBSERVE_SERVICE_ID || 'amrutam-api',
       appKey: process.env.OBSERVE_APP_KEY,
       appSecret: process.env.OBSERVE_APP_SECRET,
+      enabled: process.env.OBSERVE_ENABLE === 'true',
     }),
     GraphqlModule,
     DatabaseModule,
+    RedisModule,
     PaginationModule,
     AuthModule,
     DoctorModule,
@@ -46,6 +48,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(helmet(), cors(), AuthMiddleware).forRoutes('*');
+    consumer
+      .apply(helmetMiddleware(), corsMiddleware(), AuthMiddleware)
+      .forRoutes('*');
   }
 }
+

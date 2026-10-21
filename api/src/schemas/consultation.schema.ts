@@ -40,8 +40,11 @@ export class Consultation {
   @Column({ type: 'text', nullable: true })
   reason: string | null;
 
-  @Column({ type: 'varchar', length: 20, default: 'BOOKED' })
+  @Column({ type: 'varchar', length: 20, default: 'PENDING_PAYMENT' })
   status: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  hold_expires_at: Date | null;
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;

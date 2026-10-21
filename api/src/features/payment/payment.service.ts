@@ -7,10 +7,12 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 
 import { Payment } from '../../schemas/payment.schema';
 import { Consultation } from '../../schemas/consultation.schema';
+import { AvailabilitySlot } from '../../schemas/availability_slot.schema';
+import { RedisService } from '../../core/redis/redis.service';
 import { handleServiceError } from '../../utils/error/error.util';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { ProcessPaymentDto } from './dto/process-payment.dto';
@@ -26,6 +28,8 @@ export class PaymentService {
     private readonly paymentRepository: Repository<Payment>,
     @InjectRepository(Consultation)
     private readonly consultationRepository: Repository<Consultation>,
+    private readonly redisService: RedisService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -54,8 +58,10 @@ export class PaymentService {
         );
       }
 
-      if (consultation.status === 'CANCELLED') {
-        throw new BadRequestException('Cannot initiate payment for a cancelled consultation');
+      if (consultation.status === 'CANCELLED' || consultation.status === 'EXPIRED') {
+        throw new BadRequestException(
+          `Cannot initiate payment for a ${consultation.status.toLowerCase()} consultation. The reservation window may have expired.`,
+        );
       }
 
       // Generate unique transaction reference if not supplied
@@ -96,18 +102,26 @@ export class PaymentService {
 
   /**
    * Update: Process and update payment transaction status (e.g. mark as PAID).
+   * Saga Final Step / Compensation:
+   * 1. If PAID / COMPLETED: Confirms consultation, sets slot to BOOKED, and removes Redis hold.
+   * 2. If FAILED / CANCELLED: Cancels consultation, releases slot back to AVAILABLE immediately, and clears Redis hold.
    */
   async processPayment(
     userId: string,
     processDto: ProcessPaymentDto,
   ): Promise<string> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const payment = await this.paymentRepository.findOne({
+      const payment = await queryRunner.manager.findOne(Payment, {
         where: { payment_id: processDto.payment_id },
         relations: {
           consultation: {
             patient: true,
             doctor: { user: true },
+            slot: true,
           },
         },
       });
@@ -125,7 +139,8 @@ export class PaymentService {
         );
       }
 
-      payment.payment_status = processDto.payment_status.toUpperCase().trim();
+      const newStatus = processDto.payment_status.toUpperCase().trim();
+      payment.payment_status = newStatus;
 
       if (processDto.payment_method) {
         payment.payment_method = processDto.payment_method.trim();
@@ -135,17 +150,57 @@ export class PaymentService {
         payment.transaction_reference = processDto.transaction_reference.trim();
       }
 
-      if (
-        payment.payment_status === 'PAID' ||
-        payment.payment_status === 'COMPLETED'
-      ) {
+      const isSuccessful = newStatus === 'PAID' || newStatus === 'COMPLETED';
+      const isFailed = newStatus === 'FAILED' || newStatus === 'CANCELLED';
+
+      if (isSuccessful) {
         payment.paid_at = new Date();
+
+        // 1. Confirm the Consultation
+        if (payment.consultation) {
+          payment.consultation.status = 'CONFIRMED';
+          await queryRunner.manager.save(payment.consultation);
+
+          // 2. Lock the Slot as BOOKED
+          if (payment.consultation.slot_id) {
+            await queryRunner.manager.update(
+              AvailabilitySlot,
+              { slot_id: payment.consultation.slot_id },
+              { status: 'BOOKED' },
+            );
+          }
+        }
+      } else if (isFailed && payment.consultation) {
+        // Fast Compensation on payment failure: release slot immediately
+        payment.consultation.status = 'CANCELLED';
+        await queryRunner.manager.save(payment.consultation);
+
+        if (payment.consultation.slot_id) {
+          await queryRunner.manager.update(
+            AvailabilitySlot,
+            { slot_id: payment.consultation.slot_id },
+            { status: 'AVAILABLE' },
+          );
+        }
       }
 
-      await this.paymentRepository.save(payment);
+      await queryRunner.manager.save(payment);
+      await queryRunner.commitTransaction();
+
+      // Clean up Redis hold and invalidate cached availability
+      if (payment.consultation?.slot_id) {
+        await this.redisService.releaseSlotHold(payment.consultation.slot_id);
+      }
+      if (payment.consultation?.doctor_id) {
+        await this.redisService.invalidateDoctorSlots(payment.consultation.doctor_id);
+      }
+
       return 'Payment processed successfully';
     } catch (error) {
+      await queryRunner.rollbackTransaction();
       handleServiceError(error, this.logger, 'PaymentService.processPayment');
+    } finally {
+      await queryRunner.release();
     }
   }
 

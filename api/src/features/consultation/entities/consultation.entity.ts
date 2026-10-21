@@ -29,6 +29,9 @@ export class ConsultationEntity {
   @Field(() => String)
   status: string;
 
+  @Field(() => Date, { nullable: true })
+  hold_expires_at?: Date | null;
+
   @Field(() => String, { nullable: true })
   notes?: string | null;
 

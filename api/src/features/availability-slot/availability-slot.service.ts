@@ -16,6 +16,7 @@ import { CreateAvailabilitySlotDto } from './dto/create-slot.dto';
 import { UpdateAvailabilitySlotDto } from './dto/update-slot.dto';
 import { BulkCreateSlotsDto } from './dto/bulk-create-slots.dto';
 import { AvailabilitySlotEntity } from './entities/availability-slot.entity';
+import { RedisService } from '../../core/redis/redis.service';
 
 @Injectable()
 export class AvailabilitySlotService {
@@ -26,6 +27,7 @@ export class AvailabilitySlotService {
     private readonly slotRepository: Repository<AvailabilitySlot>,
     @InjectRepository(Doctor)
     private readonly doctorRepository: Repository<Doctor>,
+    private readonly redisService: RedisService,
   ) { }
 
   /**
@@ -85,6 +87,9 @@ export class AvailabilitySlotService {
       });
 
       await this.slotRepository.save(slot);
+
+      // Invalidate Redis availability cache for this doctor
+      await this.redisService.invalidateDoctorSlots(doctor.doctor_id);
 
       return 'Availability slot created successfully';
     } catch (error) {
@@ -151,6 +156,9 @@ export class AvailabilitySlotService {
 
       await this.slotRepository.save(slotsToCreate);
 
+      // Invalidate Redis availability cache for this doctor
+      await this.redisService.invalidateDoctorSlots(doctor.doctor_id);
+
       return 'Availability slots created successfully';
     } catch (error) {
       handleServiceError(
@@ -213,6 +221,12 @@ export class AvailabilitySlotService {
       }
 
       await this.slotRepository.save(slot);
+
+      // Invalidate Redis availability cache
+      if (slot.doctor_id) {
+        await this.redisService.invalidateDoctorSlots(slot.doctor_id);
+      }
+
       return 'Availability slot updated successfully';
     } catch (error) {
       handleServiceError(
@@ -250,6 +264,12 @@ export class AvailabilitySlotService {
       }
 
       await this.slotRepository.remove(slot);
+
+      // Invalidate Redis availability cache
+      if (slot.doctor_id) {
+        await this.redisService.invalidateDoctorSlots(slot.doctor_id);
+      }
+
       return 'Availability slot deleted successfully';
     } catch (error) {
       handleServiceError(
@@ -261,13 +281,25 @@ export class AvailabilitySlotService {
   }
 
   /**
-   * Get: Retrieve public available slots for a doctor.
+   * Get: Retrieve public available slots for a doctor with Redis caching.
    */
   async getDoctorAvailability(
     doctorId: string,
     fromDate?: Date,
   ): Promise<AvailabilitySlotEntity[]> {
     try {
+      const dateKey = fromDate
+        ? new Date(fromDate).toISOString().slice(0, 10)
+        : 'upcoming';
+      const cacheKey = `cache:slots:${doctorId}:${dateKey}`;
+
+      // Check Redis cache first
+      const cachedSlots =
+        await this.redisService.getCache<AvailabilitySlotEntity[]>(cacheKey);
+      if (cachedSlots) {
+        return cachedSlots;
+      }
+
       const query = this.slotRepository
         .createQueryBuilder('slot')
         .leftJoinAndSelect('slot.doctor', 'doctor')
@@ -281,7 +313,12 @@ export class AvailabilitySlotService {
       query.orderBy('slot.start_time', 'ASC');
 
       const slots = await query.getMany();
-      return slots as unknown as AvailabilitySlotEntity[];
+      const result = slots as unknown as AvailabilitySlotEntity[];
+
+      // Cache the result in Redis for 120 seconds
+      await this.redisService.setCache(cacheKey, result, 120);
+
+      return result;
     } catch (error) {
       handleServiceError(
         error,

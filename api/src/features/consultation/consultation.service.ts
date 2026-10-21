@@ -7,12 +7,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 
 import { Consultation } from '../../schemas/consultation.schema';
 import { Doctor } from '../../schemas/doctor.schema';
 import { User } from '../../schemas/user.schema';
 import { AvailabilitySlot } from '../../schemas/availability_slot.schema';
+import { RedisService } from '../../core/redis/redis.service';
 import { handleServiceError } from '../../utils/error/error.util';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { RescheduleConsultationDto } from './dto/reschedule-consultation.dto';
@@ -31,15 +32,26 @@ export class ConsultationService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(AvailabilitySlot)
     private readonly slotRepository: Repository<AvailabilitySlot>,
+    private readonly redisService: RedisService,
+    private readonly dataSource: DataSource,
   ) { }
 
   /**
    * Insert: Book a new consultation with a doctor.
+   * Concurrency & Saga:
+   * 1. Atomically holds slot in Redis (SET NX EX 600) to reject competing requests in microseconds.
+   * 2. Starts DB transaction with pessimistic write lock (SELECT FOR UPDATE).
+   * 3. Sets slot to HELD and consultation to PENDING_PAYMENT with hold_expires_at (10 min).
+   * 4. Invalidates Redis doctor availability cache.
+   * 5. If uncompleted after 10 min, Redis keyspace expiry triggers compensation to release the slot.
    */
   async bookConsultation(
     patientUserId: string,
     createDto: CreateConsultationDto,
   ): Promise<string> {
+    const HOLD_DURATION_SECONDS = 600; // 10 minutes hold
+    let redisHoldAcquired = false;
+
     try {
       // 1. Fetch doctor and check validity
       const doctor = await this.doctorRepository.findOne({
@@ -68,47 +80,89 @@ export class ConsultationService {
         throw new NotFoundException('Patient account not found');
       }
 
-      // 3. Handle availability slot if selected
-      let slot: AvailabilitySlot | null = null;
+      // 3. Fast Concurrency Check via Redis Atomic Lock (Saga Step 1)
       if (createDto.slot_id) {
-        slot = await this.slotRepository.findOne({
-          where: { slot_id: createDto.slot_id },
-        });
+        const acquired = await this.redisService.acquireSlotHold(
+          createDto.slot_id,
+          patientUserId,
+          HOLD_DURATION_SECONDS,
+        );
 
-        if (!slot) {
-          throw new NotFoundException('Selected availability slot not found');
-        }
-
-        if (slot.doctor_id !== createDto.doctor_id) {
-          throw new BadRequestException(
-            'Selected slot does not belong to this doctor',
-          );
-        }
-
-        if (slot.status !== 'AVAILABLE') {
+        if (!acquired) {
           throw new ConflictException(
-            'Selected availability slot is already booked',
+            'Selected availability slot is currently being held by another user. Please choose another slot or try again in a few minutes.',
           );
         }
-
-        slot.status = 'BOOKED';
-        await this.slotRepository.save(slot);
+        redisHoldAcquired = true;
       }
 
-      // 4. Create consultation
-      const consultation = this.consultationRepository.create({
-        patient_id: patientUserId,
-        doctor_id: createDto.doctor_id,
-        slot_id: createDto.slot_id || null,
-        scheduled_at: createDto.scheduled_at,
-        consultation_type: createDto.consultation_type,
-        reason: createDto.reason?.trim() || null,
-        status: 'BOOKED',
-      });
+      // 4. PostgreSQL Database Transaction with Row-Level Lock (Saga Step 2)
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-      await this.consultationRepository.save(consultation);
+      try {
+        let slot: AvailabilitySlot | null = null;
+        let holdExpiresAt: Date | null = null;
 
-      return 'Consultation booked successfully';
+        if (createDto.slot_id) {
+          slot = await queryRunner.manager
+            .getRepository(AvailabilitySlot)
+            .createQueryBuilder('slot')
+            .setLock('pessimistic_write')
+            .where('slot.slot_id = :slotId', { slotId: createDto.slot_id })
+            .getOne();
+
+          if (!slot) {
+            throw new NotFoundException('Selected availability slot not found');
+          }
+
+          if (slot.doctor_id !== createDto.doctor_id) {
+            throw new BadRequestException(
+              'Selected slot does not belong to this doctor',
+            );
+          }
+
+          if (slot.status !== 'AVAILABLE') {
+            throw new ConflictException(
+              'Selected availability slot is already booked or reserved',
+            );
+          }
+
+          slot.status = 'HELD';
+          await queryRunner.manager.save(slot);
+
+          holdExpiresAt = new Date(Date.now() + HOLD_DURATION_SECONDS * 1000);
+        }
+
+        // Create consultation in PENDING_PAYMENT status
+        const consultation = queryRunner.manager.create(Consultation, {
+          patient_id: patientUserId,
+          doctor_id: createDto.doctor_id,
+          slot_id: createDto.slot_id || null,
+          scheduled_at: createDto.scheduled_at,
+          consultation_type: createDto.consultation_type,
+          reason: createDto.reason?.trim() || null,
+          status: 'PENDING_PAYMENT',
+          hold_expires_at: holdExpiresAt,
+        });
+
+        await queryRunner.manager.save(consultation);
+        await queryRunner.commitTransaction();
+
+        // Invalidate cached availability for this doctor
+        await this.redisService.invalidateDoctorSlots(createDto.doctor_id);
+
+        return `Consultation reserved successfully (ID: ${consultation.consultation_id}). Please complete payment within 10 minutes.`;
+      } catch (txError) {
+        await queryRunner.rollbackTransaction();
+        if (redisHoldAcquired && createDto.slot_id) {
+          await this.redisService.releaseSlotHold(createDto.slot_id);
+        }
+        throw txError;
+      } finally {
+        await queryRunner.release();
+      }
     } catch (error) {
       handleServiceError(error, this.logger, 'ConsultationService.bookConsultation', {
         userId: patientUserId,
@@ -167,6 +221,7 @@ export class ConsultationService {
         if (previousSlot) {
           previousSlot.status = 'AVAILABLE';
           await this.slotRepository.save(previousSlot);
+          await this.redisService.releaseSlotHold(previousSlot.slot_id);
         }
       }
 
@@ -202,6 +257,8 @@ export class ConsultationService {
 
       consultation.scheduled_at = rescheduleDto.scheduled_at;
       await this.consultationRepository.save(consultation);
+
+      await this.redisService.invalidateDoctorSlots(consultation.doctor_id);
 
       return 'Consultation rescheduled successfully';
     } catch (error) {
@@ -263,6 +320,7 @@ export class ConsultationService {
           slot.status = 'AVAILABLE';
           await this.slotRepository.save(slot);
         }
+        await this.redisService.releaseSlotHold(consultation.slot_id);
       }
 
       consultation.status = 'CANCELLED';
@@ -273,6 +331,10 @@ export class ConsultationService {
       }
 
       await this.consultationRepository.save(consultation);
+
+      // Invalidate cached doctor availability
+      await this.redisService.invalidateDoctorSlots(consultation.doctor_id);
+
       return 'Consultation cancelled successfully';
     } catch (error) {
       handleServiceError(
