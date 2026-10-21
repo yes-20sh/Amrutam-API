@@ -1,0 +1,55 @@
+meta {
+  name: Get Consultation By Id
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetConsultationById($consultationId: ID!) {
+    getConsultationById(consultationId: $consultationId) {
+      consultation_id
+      patient_id
+      doctor_id
+      slot_id
+      scheduled_at
+      consultation_type
+      reason
+      status
+      notes
+      created_at
+      updated_at
+      patient {
+        user_id
+        email
+        profile {
+          full_name
+          phone
+        }
+      }
+      doctor {
+        doctor_id
+        specialization
+        license_number
+        qualification
+        consultation_fee
+        user {
+          profile {
+            full_name
+          }
+        }
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "consultationId": "00000000-0000-0000-0000-000000000000"
+  }
+}

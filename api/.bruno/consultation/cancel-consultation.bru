@@ -1,0 +1,24 @@
+meta {
+  name: Cancel Consultation
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation CancelConsultation($consultationId: ID!, $reason: String) {
+    cancelConsultation(consultationId: $consultationId, reason: $reason)
+  }
+}
+
+body:graphql:vars {
+  {
+    "consultationId": "00000000-0000-0000-0000-000000000000",
+    "reason": "Scheduling conflict"
+  }
+}

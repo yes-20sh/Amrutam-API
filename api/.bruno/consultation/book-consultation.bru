@@ -1,0 +1,29 @@
+meta {
+  name: Book Consultation
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation BookConsultation($input: CreateConsultationDto!) {
+    bookConsultation(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "doctor_id": "00000000-0000-0000-0000-000000000000",
+      "slot_id": "00000000-0000-0000-0000-000000000000",
+      "scheduled_at": "2026-10-25T10:00:00.000Z",
+      "consultation_type": "ONLINE",
+      "reason": "General Ayurvedic consultation regarding chronic digestive issues"
+    }
+  }
+}

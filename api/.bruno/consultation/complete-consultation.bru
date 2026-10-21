@@ -1,0 +1,24 @@
+meta {
+  name: Complete Consultation
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation CompleteConsultation($consultationId: ID!, $notes: String) {
+    completeConsultation(consultationId: $consultationId, notes: $notes)
+  }
+}
+
+body:graphql:vars {
+  {
+    "consultationId": "00000000-0000-0000-0000-000000000000",
+    "notes": "Patient advised dietary changes, Triphala churnam before bedtime, and follow-up in 2 weeks."
+  }
+}

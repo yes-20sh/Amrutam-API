@@ -1,0 +1,29 @@
+meta {
+  name: Patient Signup
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation Signup($input: SignupDto!) {
+    signup(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "email": "patient@example.com",
+      "password": "strongpassword",
+      "full_name": "John Doe",
+      "phone": "9876543210",
+      "role": "PATIENT"
+    }
+  }
+}
