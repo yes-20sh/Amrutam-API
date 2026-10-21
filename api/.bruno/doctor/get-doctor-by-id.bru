@@ -1,0 +1,46 @@
+meta {
+  name: Get Doctor By Id
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetDoctorById($doctorId: ID!) {
+    getDoctorById(doctorId: $doctorId) {
+      doctor_id
+      user_id
+      specialization
+      license_number
+      qualification
+      experience_years
+      consultation_fee
+      verification_status
+      bio
+      created_at
+      updated_at
+      user {
+        user_id
+        email
+        role
+        status
+        profile {
+          full_name
+          phone
+          profile_image_url
+        }
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "doctorId": "00000000-0000-0000-0000-000000000000"
+  }
+}

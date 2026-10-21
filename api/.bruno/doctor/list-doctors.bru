@@ -1,0 +1,40 @@
+meta {
+  name: List Doctors
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query ListDoctors {
+    listDoctors {
+      doctor_id
+      user_id
+      specialization
+      license_number
+      qualification
+      experience_years
+      consultation_fee
+      verification_status
+      bio
+      created_at
+      updated_at
+      user {
+        user_id
+        email
+        role
+        status
+        profile {
+          full_name
+          phone
+          profile_image_url
+        }
+      }
+    }
+  }
+}
