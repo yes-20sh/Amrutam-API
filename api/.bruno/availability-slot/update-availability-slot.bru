@@ -1,0 +1,28 @@
+meta {
+  name: Update Availability Slot
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation UpdateAvailabilitySlot($slotId: ID!, $input: UpdateAvailabilitySlotDto!) {
+    updateAvailabilitySlot(slotId: $slotId, input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "slotId": "00000000-0000-0000-0000-000000000000",
+    "input": {
+      "start_time": "2026-10-25T10:00:00.000Z",
+      "end_time": "2026-10-25T10:30:00.000Z",
+      "status": "AVAILABLE"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+meta {
+  name: My Availability Slots
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query MyAvailabilitySlots {
+    myAvailabilitySlots {
+      slot_id
+      doctor_id
+      start_time
+      end_time
+      status
+      created_at
+      doctor {
+        doctor_id
+        specialization
+        license_number
+        qualification
+        experience_years
+        consultation_fee
+      }
+    }
+  }
+}

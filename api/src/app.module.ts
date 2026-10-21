@@ -10,6 +10,7 @@ import { PaginationModule } from './common/pagination/pagination.module';
 import { AuthModule } from './features/auth/auth.module';
 import { AuthMiddleware } from './core/middleware/auth.middleware';
 import { DoctorModule } from './features/doctor/doctor.module';
+import { AvailabilitySlotModule } from './features/availability-slot/availability-slot.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { DoctorModule } from './features/doctor/doctor.module';
     PaginationModule,
     AuthModule,
     DoctorModule,
+    AvailabilitySlotModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })

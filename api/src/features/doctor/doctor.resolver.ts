@@ -1,5 +1,4 @@
 import { Resolver, Mutation, Query, Args, ID } from '@nestjs/graphql';
-
 import { DoctorService } from './doctor.service';
 import { Public } from '../../common/decorator/public.decorator';
 import { CurrentUserId } from '../../common/decorator/current-user.decorator';
