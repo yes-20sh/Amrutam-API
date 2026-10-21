@@ -139,6 +139,22 @@ export class PaymentService {
         );
       }
 
+      // Idempotency: prevent double-processing of already completed or refunded payments
+      if (
+        payment.payment_status === 'PAID' ||
+        payment.payment_status === 'COMPLETED'
+      ) {
+        await queryRunner.rollbackTransaction();
+        return 'Payment has already been processed and confirmed.';
+      }
+
+      if (payment.payment_status === 'REFUNDED') {
+        await queryRunner.rollbackTransaction();
+        throw new BadRequestException(
+          'Cannot process a payment that has already been refunded.',
+        );
+      }
+
       const newStatus = processDto.payment_status.toUpperCase().trim();
       payment.payment_status = newStatus;
 
@@ -187,13 +203,17 @@ export class PaymentService {
       await queryRunner.manager.save(payment);
       await queryRunner.commitTransaction();
 
-      // Clean up Redis hold and invalidate cached availability
-      if (payment.consultation?.slot_id) {
-        await this.redisService.releaseSlotHold(payment.consultation.slot_id);
-      }
-      if (payment.consultation?.doctor_id) {
-        await this.redisService.invalidateDoctorSlots(payment.consultation.doctor_id);
-      }
+      // Parallel cleanup of Redis hold and targeted invalidation of doctor availability
+      await Promise.allSettled([
+        payment.consultation?.slot_id
+          ? this.redisService.releaseSlotHold(payment.consultation.slot_id)
+          : Promise.resolve(),
+        payment.consultation?.doctor_id
+          ? this.redisService.invalidateDoctorSlots(
+              payment.consultation.doctor_id,
+            )
+          : Promise.resolve(),
+      ]);
 
       return 'Payment processed successfully';
     } catch (error) {

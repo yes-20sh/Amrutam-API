@@ -119,6 +119,14 @@ export class ConsultationExpiryService
   private startReconciliationWorker() {
     this.reconciliationTimer = setInterval(async () => {
       try {
+        const hasLock = await this.redisService.acquireLock(
+          'reconciliation:worker',
+          55,
+        );
+        if (!hasLock) {
+          return;
+        }
+
         const expiredConsultations = await this.dataSource
           .getRepository(Consultation)
           .createQueryBuilder('c')

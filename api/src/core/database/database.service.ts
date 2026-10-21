@@ -12,7 +12,7 @@ export class DatabaseConfigService implements TypeOrmOptionsFactory {
     const baseOptions: TypeOrmModuleOptions = {
       type: 'postgres',
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: !isProduction,
       migrationsRun: false,
       ssl: isSsl ? { rejectUnauthorized: false } : false,
       extra: {

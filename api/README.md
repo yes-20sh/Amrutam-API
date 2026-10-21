@@ -562,6 +562,11 @@ GRAPHQL_PLAYGROUND=true
 DATABASE_URL=postgresql://<username>:<password>@<host>:5432/<database>
 DATABASE_SSL=true
 
+# Redis (set REDIS_URL or REDIS_HOST/REDIS_PORT; password is optional)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+# REDIS_PASSWORD=your-redis-password
+
 # Authentication
 JWT_SECRET=super-secure-jwt-secret-key-min-32-chars
 JWT_EXPIRES_IN=7d
@@ -606,7 +611,68 @@ bun run build
 bun run start:prod
 ```
 
-### 4. Running with Docker & Docker Compose
+### 4. Test Redis Queue and Concurrency
+With Redis running and the Redis environment variables configured, run:
+```bash
+bun run test:redis
+# or
+npm run test:redis
+```
+
+The script checks Redis connectivity, FIFO processing with simulated concurrent
+workers, and atomic slot locking under concurrent requests. It uses temporary,
+unique Redis keys and removes them after the test. This is a Redis smoke test;
+the API does not currently configure a production job-queue library.
+
+### 5. Deploying the Docker API to Render for Free
+
+This repository includes a Render Blueprint (`render.yaml`) and a GitHub Actions
+workflow. Render builds and runs the Docker image directly from this GitHub
+repository; a separate Docker registry is not required.
+
+1. Push or merge the changes to the `main` branch on GitHub.
+2. In Render, create a **Blueprint** and connect this repository. Confirm the
+   `amrutam-api` web service from `render.yaml`.
+3. Set the requested `DATABASE_URL` and `JWT_SECRET` values in Render. Use a
+   PostgreSQL connection URL and a strong, unique JWT secret. Configure
+   `REDIS_URL` if using a hosted Redis instance.
+4. In the Render service settings, create a deploy hook. Add its URL to the
+   GitHub repository as an Actions secret named `RENDER_DEPLOY_HOOK`
+   (**Settings → Secrets and variables → Actions**).
+5. Push to `main` (or run the workflow manually). GitHub Actions builds the
+   Docker image first and triggers Render only after the build succeeds.
+
+The `/health` endpoint is used for Render health checks. Render's free web
+services can spin down when idle and may have other plan limits; availability
+and included free resources depend on Render's current plan. The API also needs
+an externally reachable PostgreSQL database, and Redis is optional.
+
+### 6. Deploying NestJS to Vercel
+
+Vercel supports NestJS as a serverless function. This deployment does not run
+the Docker container.
+
+1. Create a Vercel project and import this GitHub repository. Set the Vercel
+   project **Root Directory** to `api`.
+2. In Vercel project settings, add the runtime environment variables required
+   by the API, including `DATABASE_URL` and a strong, unique `JWT_SECRET`.
+   Configure `DATABASE_SSL`, `REDIS_URL`, and other values as needed.
+3. In the Vercel dashboard, copy the account/team ID and project ID. Create a
+   Vercel access token.
+4. Add these GitHub Actions repository secrets under **Settings → Secrets and
+   variables → Actions**: `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and
+   `VERCEL_TOKEN`.
+5. Disable Vercel's automatic Git deployments if you want GitHub Actions to
+   gate production deploys; otherwise, Vercel may also deploy the same push
+   independently.
+6. Push or merge changes to `main`. The workflow builds the NestJS application
+   and deploys to Vercel only after the build succeeds. Pull requests to `main`
+   run the build check without deploying.
+
+Serverless deployments have platform limits and are not a persistent Docker
+container.
+
+### 7. Running with Docker & Docker Compose
 
 #### Using Docker Compose (API + PostgreSQL):
 ```bash

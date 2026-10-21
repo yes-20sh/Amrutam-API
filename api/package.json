@@ -16,6 +16,8 @@
     "lint": "oxlint --type-aware src/ test/",
     "test": "bun test",
     "test:features": "bun test src/features",
+    "test:redis": "node scripts/test-redis.mjs",
+    "test:redis:cache": "node scripts/test-redis-caching.mjs",
     "test:watch": "bun test --watch",
     "test:cov": "bun test --coverage",
     "test:jest": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",

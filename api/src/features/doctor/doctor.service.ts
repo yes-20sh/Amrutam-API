@@ -12,6 +12,7 @@ import { User } from '../../schemas/user.schema';
 import { UserRole } from '../../common/enum/user-role.enum';
 import { VerificationStatus } from '../../common/enum/verification-status.enum';
 import { handleServiceError } from '../../utils/error/error.util';
+import { RedisService } from '../../core/redis/redis.service';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { DoctorEntity } from './entities/doctor.entity';
@@ -25,6 +26,7 @@ export class DoctorService {
     private readonly doctorRepository: Repository<Doctor>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly redisService: RedisService,
   ) { }
 
   /**
@@ -87,6 +89,9 @@ export class DoctorService {
 
       await this.doctorRepository.save(doctor);
 
+      // Invalidate doctor list cache
+      await this.redisService.invalidateDoctorList();
+
       return 'Doctor profile created successfully';
     } catch (error) {
       handleServiceError(error, this.logger, 'DoctorService.createDoctorProfile');
@@ -131,6 +136,10 @@ export class DoctorService {
       }
 
       await this.doctorRepository.save(doctor);
+
+      // Invalidate specific doctor and directory cache
+      await this.redisService.invalidateDoctorProfile(doctor.doctor_id);
+
       return 'Doctor profile updated successfully';
     } catch (error) {
       handleServiceError(error, this.logger, 'DoctorService.updateDoctorProfile');
@@ -158,6 +167,12 @@ export class DoctorService {
 
   async getDoctorById(doctorId: string): Promise<DoctorEntity> {
     try {
+      const cacheKey = `cache:doctor:${doctorId}`;
+      const cached = await this.redisService.getCache<DoctorEntity>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       const doctor = await this.doctorRepository.findOne({
         where: { doctor_id: doctorId },
         relations: { user: { profile: true } },
@@ -167,7 +182,9 @@ export class DoctorService {
         throw new NotFoundException('Doctor not found');
       }
 
-      return doctor as unknown as DoctorEntity;
+      const result = doctor as unknown as DoctorEntity;
+      await this.redisService.setCache(cacheKey, result, 600); // 10 minutes cache
+      return result;
     } catch (error) {
       handleServiceError(error, this.logger, 'DoctorService.getDoctorById');
     }
@@ -175,12 +192,20 @@ export class DoctorService {
 
   async listDoctors(): Promise<DoctorEntity[]> {
     try {
+      const cacheKey = 'cache:doctors:list';
+      const cached = await this.redisService.getCache<DoctorEntity[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       const doctors = await this.doctorRepository.find({
         relations: { user: { profile: true } },
         order: { created_at: 'DESC' },
       });
 
-      return doctors as unknown as DoctorEntity[];
+      const result = doctors as unknown as DoctorEntity[];
+      await this.redisService.setCache(cacheKey, result, 600); // 10 minutes cache
+      return result;
     } catch (error) {
       handleServiceError(error, this.logger, 'DoctorService.listDoctors');
     }

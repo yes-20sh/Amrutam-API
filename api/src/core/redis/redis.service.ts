@@ -172,14 +172,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async delByPattern(pattern: string): Promise<void> {
     if (!this.client || !this.isConnected) return;
     try {
-      const stream = this.client.scanStream({ match: pattern, count: 100 });
-      stream.on('data', (keys: string[]) => {
-        if (keys.length && this.client) {
-          const pipeline = this.client.pipeline();
-          keys.forEach((key) => pipeline.del(key));
-          pipeline.exec();
-        }
-      });
+      const keys = await this.client.keys(pattern);
+      if (keys && keys.length > 0) {
+        await this.client.del(...keys);
+      }
     } catch (err: any) {
       this.logger.warn(`Cache pattern delete failed for "${pattern}": ${err.message}`);
     }
@@ -191,6 +187,50 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async invalidateDoctorSlots(doctorId: string): Promise<void> {
     await this.delByPattern(`cache:slots:${doctorId}:*`);
     await this.delCache(`cache:doctor:${doctorId}:available_slots`);
+  }
+
+  /**
+   * Helper: Invalidate cached doctor directory list
+   */
+  async invalidateDoctorList(): Promise<void> {
+    await this.delCache('cache:doctors:list');
+  }
+
+  /**
+   * Helper: Invalidate a specific doctor's profile cache
+   */
+  async invalidateDoctorProfile(doctorId: string): Promise<void> {
+    await this.delCache(`cache:doctor:${doctorId}`);
+    await this.delCache('cache:doctors:list');
+  }
+
+  /**
+   * Distributed Lock: Acquire a lock with TTL (seconds) for background workers
+   */
+  async acquireLock(lockKey: string, ttlSeconds = 30): Promise<boolean> {
+    if (!this.client || !this.isConnected) return true;
+    try {
+      const res = await this.client.set(
+        `lock:${lockKey}`,
+        'locked',
+        'EX',
+        ttlSeconds,
+        'NX',
+      );
+      return res === 'OK';
+    } catch {
+      return true; // Fallback to allowing execution
+    }
+  }
+
+  /**
+   * Distributed Lock: Release a lock
+   */
+  async releaseLock(lockKey: string): Promise<void> {
+    if (!this.client || !this.isConnected) return;
+    try {
+      await this.client.del(`lock:${lockKey}`);
+    } catch {}
   }
 
   onModuleDestroy() {
