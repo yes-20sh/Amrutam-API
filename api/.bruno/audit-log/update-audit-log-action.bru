@@ -1,0 +1,24 @@
+meta {
+  name: Update Audit Log Action
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation UpdateAuditLogAction($auditId: ID!, $action: AuditLogAction!) {
+    updateAuditLogAction(auditId: $auditId, action: $action)
+  }
+}
+
+body:graphql:vars {
+  {
+    "auditId": "00000000-0000-0000-0000-000000000000",
+    "action": "FIXED"
+  }
+}

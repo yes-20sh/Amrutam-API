@@ -1,0 +1,29 @@
+meta {
+  name: Record Audit Log
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation RecordAuditLog($input: CreateAuditLogDto!) {
+    recordAuditLog(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "api_name": "ConsultationService.bookConsultation",
+      "error": "invalid input syntax for type uuid: \"ed468a2-6849-40fc-af10-d284e63568ff\"",
+      "action": "PENDING",
+      "user_id": null,
+      "ip_address": "127.0.0.1"
+    }
+  }
+}

@@ -14,6 +14,7 @@ import { AvailabilitySlotModule } from './features/availability-slot/availabilit
 import { ConsultationModule } from './features/consultation/consultation.module';
 import { PrescriptionModule } from './features/prescription/prescription.module';
 import { PaymentModule } from './features/payment/payment.module';
+import { AuditLogModule } from './features/audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { PaymentModule } from './features/payment/payment.module';
     ConsultationModule,
     PrescriptionModule,
     PaymentModule,
+    AuditLogModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })

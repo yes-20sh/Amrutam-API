@@ -110,7 +110,9 @@ export class ConsultationService {
 
       return 'Consultation booked successfully';
     } catch (error) {
-      handleServiceError(error, this.logger, 'ConsultationService.bookConsultation');
+      handleServiceError(error, this.logger, 'ConsultationService.bookConsultation', {
+        userId: patientUserId,
+      });
     }
   }
 

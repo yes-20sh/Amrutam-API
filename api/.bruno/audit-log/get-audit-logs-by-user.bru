@@ -1,0 +1,33 @@
+meta {
+  name: Get Audit Logs by User
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetAuditLogsByUser($userId: ID!, $limit: Int, $offset: Int) {
+    getAuditLogsByUser(userId: $userId, limit: $limit, offset: $offset) {
+      audit_id
+      api_name
+      error
+      action
+      user_id
+      ip_address
+      created_at
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "userId": "00000000-0000-0000-0000-000000000000",
+    "limit": 50,
+    "offset": 0
+  }
+}

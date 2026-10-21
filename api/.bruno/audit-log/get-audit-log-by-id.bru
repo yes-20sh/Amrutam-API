@@ -1,0 +1,31 @@
+meta {
+  name: Get Audit Log by ID
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetAuditLogById($auditId: ID!) {
+    getAuditLogById(auditId: $auditId) {
+      audit_id
+      api_name
+      error
+      action
+      user_id
+      ip_address
+      created_at
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "auditId": "00000000-0000-0000-0000-000000000000"
+  }
+}
