@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { User } from './user.schema';
 import { Doctor } from './doctor.schema';
-import { AvailabilitySlot } from './availability_slot.entity';
+import { AvailabilitySlot } from './availability_slot.schema';
 import { Prescription } from './prescription.schema';
 import { Payment } from './payment.schema';
 

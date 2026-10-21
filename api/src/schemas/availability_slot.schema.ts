@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, OneToMany } from 'typeorm';
 import { Doctor } from './doctor.schema';
-import { Consultation } from './consultation.entity';
+import { Consultation } from './consultation.schema';
 
 @Entity('availability_slots')
 export class AvailabilitySlot {

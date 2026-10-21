@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
 import { Profile } from './profile.schema';
 import { Doctor } from './doctor.schema';
-import { Consultation } from './consultation.entity';
+import { Consultation } from './consultation.schema';
 import { AuditLog } from './audit_log.schema';
 import { UserRole } from '../common/enum/user-role.enum';
 import { UserStatus } from '../common/enum/user-status.enum';

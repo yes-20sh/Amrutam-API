@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.schema';
-import { Consultation } from './consultation.entity';
-import { AvailabilitySlot } from './availability_slot.entity';
+import { Consultation } from './consultation.schema';
+import { AvailabilitySlot } from './availability_slot.schema';
 
 @Entity('doctors')
 export class Doctor {

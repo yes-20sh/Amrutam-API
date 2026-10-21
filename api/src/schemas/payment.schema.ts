@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { Consultation } from './consultation.entity';
+import { Consultation } from './consultation.schema';
 
 @Entity('payments')
 export class Payment {
