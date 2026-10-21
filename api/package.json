@@ -5,6 +5,7 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "type": "module",
   "scripts": {
     "prepare": "cd .. && husky api/.husky",
     "build": "nest build",
@@ -93,5 +94,8 @@
     "js-yaml": "^4.1.0",
     "undici": "^6.21.1",
     "tmp": "^0.2.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
