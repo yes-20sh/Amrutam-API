@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { APP_GUARD } from '@nestjs/core';
 import { PublicApiGuard } from './common/gaurds/public-api.guard';
+import { RolesGuard } from './common/gaurds/roles.guard';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { helmetMiddleware } from './core/security/helmet.config';
 import { corsMiddleware } from './core/security/cors.config';
@@ -46,8 +47,12 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
     AuditLogModule,
     AnalyticsModule,
     ProfileModule,
+    HealthModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: PublicApiGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

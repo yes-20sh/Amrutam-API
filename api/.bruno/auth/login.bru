@@ -12,7 +12,11 @@ post {
 
 body:graphql {
   mutation Login($input: LoginDto!) {
-    login(input: $input)
+    login(input: $input) {
+      message
+      mfa_required
+      mfa_ticket
+    }
   }
 }
 

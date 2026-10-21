@@ -1,0 +1,28 @@
+meta {
+  name: Enable MFA
+  type: graphql
+  seq: 8
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation EnableMfa($input: VerifyMfaCodeDto!) {
+    enableMfa(input: $input) {
+      message
+      backup_codes
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "code": "123456"
+    }
+  }
+}

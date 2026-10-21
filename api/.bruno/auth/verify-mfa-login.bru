@@ -1,0 +1,26 @@
+meta {
+  name: Verify MFA Login
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation VerifyMfaLogin($input: VerifyMfaLoginDto!) {
+    verifyMfaLogin(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "mfa_ticket": "your_mfa_ticket_from_login",
+      "code": "123456"
+    }
+  }
+}

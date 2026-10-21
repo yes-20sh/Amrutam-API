@@ -29,6 +29,15 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   last_login_at: Date;
 
+  @Column({ type: 'boolean', default: false })
+  mfa_enabled: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  mfa_secret: string | null;
+
+  @Column({ type: 'simple-array', nullable: true })
+  mfa_backup_codes: string[] | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 

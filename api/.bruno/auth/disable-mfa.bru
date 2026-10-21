@@ -1,0 +1,25 @@
+meta {
+  name: Disable MFA
+  type: graphql
+  seq: 9
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation DisableMfa($input: VerifyMfaCodeDto!) {
+    disableMfa(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "code": "123456"
+    }
+  }
+}

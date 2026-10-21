@@ -3,18 +3,20 @@ import { ProfileService } from './profile.service';
 import { ProfileEntity } from './entities/profile.entity';
 import { UpdateProfileInput } from './dto/update-profile.input';
 import { CurrentUserId } from '../../common/decorator/current-user.decorator';
+import { Roles } from '../../common/decorator/roles.decorator';
+import { UserRole } from '../../common/enum/user-role.enum';
 
 @Resolver(() => ProfileEntity)
 export class ProfileResolver {
   constructor(private readonly profileService: ProfileService) {}
 
+  @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Query(() => ProfileEntity)
-  async myProfile(
-    @CurrentUserId() userId: string,
-  ): Promise<ProfileEntity> {
+  async myProfile(@CurrentUserId() userId: string): Promise<ProfileEntity> {
     return this.profileService.myProfile(userId);
   }
 
+  @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Mutation(() => String)
   async updateProfile(
     @Args('input') input: UpdateProfileInput,

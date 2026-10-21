@@ -20,6 +20,9 @@ export class UserEntity {
   @Field(() => Boolean)
   email_verified: boolean;
 
+  @Field(() => Boolean)
+  mfa_enabled: boolean;
+
   @Field(() => Date, { nullable: true })
   last_login_at?: Date | null;
 
