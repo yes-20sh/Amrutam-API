@@ -3,10 +3,10 @@ import { Consultation } from './consultation.schema';
 
 @Entity('payments')
 export class Payment {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   payment_id: string;
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'uuid' })
   consultation_id: string;
 
   @ManyToOne(() => Consultation, consultation => consultation.payments, { onDelete: 'CASCADE' })

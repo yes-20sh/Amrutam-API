@@ -9,8 +9,8 @@ import { UserStatus } from '../common/enum/user-status.enum';
 @Entity('users')
 @Unique(['email'])
 export class User {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
-  user_id: string; // using string to accommodate bigint
+  @PrimaryGeneratedColumn('uuid')
+  user_id: string;
 
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;

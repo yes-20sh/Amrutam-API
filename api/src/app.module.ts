@@ -9,6 +9,7 @@ import { DatabaseModule } from './core/database/database.module';
 import { PaginationModule } from './common/pagination/pagination.module';
 import { AuthModule } from './features/auth/auth.module';
 import { AuthMiddleware } from './core/middleware/auth.middleware';
+import { DoctorModule } from './features/doctor/doctor.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthMiddleware } from './core/middleware/auth.middleware';
     DatabaseModule,
     PaginationModule,
     AuthModule,
+    DoctorModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })

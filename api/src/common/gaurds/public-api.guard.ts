@@ -21,7 +21,7 @@ export class PublicApiGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   canActivate(context: ExecutionContext): boolean {
     // Allow routes marked with @Public() to bypass auth
@@ -38,7 +38,7 @@ export class PublicApiGuard implements CanActivate {
 
     if (!token) {
       throw new UnauthorizedException(
-        'Missing Authorization header or authentication cookie',
+        'Your session has expired or you are not authenticated. Please log in and try again.',
       );
     }
 

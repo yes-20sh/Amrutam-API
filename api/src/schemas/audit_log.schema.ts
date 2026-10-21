@@ -3,10 +3,10 @@ import { User } from './user.schema';
 
 @Entity('audit_logs')
 export class AuditLog {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   audit_id: string;
 
-  @Column({ type: 'bigint', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   user_id: string | null;
 
   @ManyToOne(() => User, user => user.audit_logs, { nullable: true, onDelete: 'SET NULL' })

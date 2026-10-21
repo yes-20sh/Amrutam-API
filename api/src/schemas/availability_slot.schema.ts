@@ -4,10 +4,10 @@ import { Consultation } from './consultation.schema';
 
 @Entity('availability_slots')
 export class AvailabilitySlot {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   slot_id: string;
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'uuid' })
   doctor_id: string;
 
   @ManyToOne(() => Doctor, doctor => doctor.availability_slots, { onDelete: 'CASCADE' })

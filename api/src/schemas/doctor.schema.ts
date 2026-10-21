@@ -5,10 +5,10 @@ import { AvailabilitySlot } from './availability_slot.schema';
 
 @Entity('doctors')
 export class Doctor {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   doctor_id: string;
 
-  @Column({ type: 'bigint', unique: true })
+  @Column({ type: 'uuid', unique: true })
   user_id: string;
 
   @OneToOne(() => User, user => user.doctor)
