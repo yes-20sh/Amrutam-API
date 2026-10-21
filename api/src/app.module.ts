@@ -12,6 +12,7 @@ import { AuthMiddleware } from './core/middleware/auth.middleware';
 import { DoctorModule } from './features/doctor/doctor.module';
 import { AvailabilitySlotModule } from './features/availability-slot/availability-slot.module';
 import { ConsultationModule } from './features/consultation/consultation.module';
+import { PrescriptionModule } from './features/prescription/prescription.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ConsultationModule } from './features/consultation/consultation.module'
     DoctorModule,
     AvailabilitySlotModule,
     ConsultationModule,
+    PrescriptionModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })

@@ -1,0 +1,36 @@
+meta {
+  name: Get Prescriptions By Consultation
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query GetPrescriptionsByConsultation($consultationId: ID!) {
+    getPrescriptionsByConsultation(consultationId: $consultationId) {
+      prescription_id
+      consultation_id
+      diagnosis
+      medication_details {
+        medicine_name
+        dosage
+        frequency
+        duration
+        instructions
+      }
+      instructions
+      issued_at
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "consultationId": "00000000-0000-0000-0000-000000000000"
+  }
+}

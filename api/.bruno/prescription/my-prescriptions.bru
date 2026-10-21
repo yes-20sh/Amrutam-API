@@ -1,0 +1,51 @@
+meta {
+  name: My Prescriptions
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query MyPrescriptions {
+    myPrescriptions {
+      prescription_id
+      consultation_id
+      diagnosis
+      medication_details {
+        medicine_name
+        dosage
+        frequency
+        duration
+        instructions
+      }
+      instructions
+      issued_at
+      consultation {
+        consultation_id
+        scheduled_at
+        status
+        patient {
+          user_id
+          email
+          profile {
+            full_name
+          }
+        }
+        doctor {
+          doctor_id
+          specialization
+          user {
+            profile {
+              full_name
+            }
+          }
+        }
+      }
+    }
+  }
+}
