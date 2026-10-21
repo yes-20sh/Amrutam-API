@@ -75,7 +75,295 @@ Amrutam API provides an end-to-end telemedicine backend platform connecting pati
 
 ---
 
-## End-to-End API Flow
+## Database Schema & Entity Relationship Diagram (ERD)
+
+The API is backed by PostgreSQL using TypeORM with global UUID v4 primary keys, strict foreign key constraints, and relational indexes.
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    User ||--o| Profile : "1-to-1 profile"
+    User ||--o| Doctor : "1-to-1 doctor credentials"
+    User ||--o{ Consultation : "books as patient"
+    Doctor ||--o{ AvailabilitySlot : "generates slots"
+    Doctor ||--o{ Consultation : "consults with"
+    AvailabilitySlot ||--o{ Consultation : "reserved by"
+    Consultation ||--o{ Payment : "billed through"
+    Consultation ||--o{ Prescription : "documented with"
+    User ||--o{ AuditLog : "triggers log"
+
+    User {
+        uuid user_id PK "UUID v4 primary key"
+        varchar email UK "Normalized unique email"
+        varchar password "Bcrypt hashed password (10 rounds)"
+        enum role "PATIENT | DOCTOR | ADMIN"
+        enum status "ACTIVE | INACTIVE | SUSPENDED"
+        boolean email_verified "Verification state"
+        boolean mfa_enabled "2FA activation flag"
+        text mfa_secret "AES-256-GCM encrypted TOTP secret"
+        simple_array mfa_backup_codes "Bcrypt-hashed single-use codes"
+        timestamptz last_login_at "Last session timestamp"
+        timestamptz created_at "Registration timestamp"
+        timestamptz updated_at "Record update timestamp"
+    }
+
+    Profile {
+        uuid profile_id PK "UUID v4 primary key"
+        uuid user_id FK,UK "1-to-1 foreign key to users"
+        varchar full_name "Legal full name"
+        date date_of_birth "Date of birth"
+        enum gender "MALE | FEMALE | OTHER"
+        varchar phone "Contact mobile number"
+        text address "Physical residential address"
+        text profile_image_url "Cloudinary image CDN URL"
+        timestamptz created_at "Creation timestamp"
+        timestamptz updated_at "Update timestamp"
+    }
+
+    Doctor {
+        uuid doctor_id PK "UUID v4 primary key"
+        uuid user_id FK,UK "1-to-1 foreign key to users"
+        varchar specialization "Clinical specialty (e.g. Ayurveda)"
+        varchar license_number UK "Medical council license number"
+        varchar qualification "Degrees & certifications (e.g. BAMS)"
+        smallint experience_years "Years of clinical practice"
+        numeric consultation_fee "Per-session fee (Precision 10,2)"
+        varchar verification_status "PENDING | APPROVED | REJECTED"
+        text bio "Professional practitioner biography"
+        timestamptz created_at "Creation timestamp"
+        timestamptz updated_at "Update timestamp"
+    }
+
+    AvailabilitySlot {
+        uuid slot_id PK "UUID v4 primary key"
+        uuid doctor_id FK "FK to doctors (ON DELETE CASCADE)"
+        timestamptz start_time "Slot start timestamp"
+        timestamptz end_time "Slot end timestamp"
+        varchar status "AVAILABLE | BOOKED"
+        timestamptz created_at "Slot generation timestamp"
+    }
+
+    Consultation {
+        uuid consultation_id PK "UUID v4 primary key"
+        uuid patient_id FK "FK to users (ON DELETE CASCADE)"
+        uuid doctor_id FK "FK to doctors (ON DELETE CASCADE)"
+        uuid slot_id FK "FK to availability_slots (ON DELETE SET NULL)"
+        timestamptz scheduled_at "Appointment timestamp"
+        varchar consultation_type "ONLINE | IN_PERSON"
+        text reason "Chief patient symptoms and complaint"
+        varchar status "PENDING_PAYMENT | CONFIRMED | COMPLETED | CANCELLED | RESCHEDULED"
+        timestamptz hold_expires_at "Slot reservation lock expiry"
+        text notes "Doctor clinical consultation notes"
+        timestamptz created_at "Booking timestamp"
+        timestamptz updated_at "Status modification timestamp"
+    }
+
+    Payment {
+        uuid payment_id PK "UUID v4 primary key"
+        uuid consultation_id FK "FK to consultations (ON DELETE CASCADE)"
+        numeric amount "Billed amount (Precision 10,2)"
+        char currency "ISO-4217 Currency (default: INR)"
+        varchar payment_method "UPI | CARD | NET_BANKING | OTHER"
+        varchar payment_status "PENDING | PAID | REFUNDED | FAILED"
+        varchar transaction_reference UK "Unique gateway transaction ID"
+        timestamptz paid_at "Payment settlement timestamp"
+        timestamptz created_at "Payment initiation timestamp"
+    }
+
+    Prescription {
+        uuid prescription_id PK "UUID v4 primary key"
+        uuid consultation_id FK "FK to consultations (ON DELETE CASCADE)"
+        text diagnosis "Clinical diagnostic assessment"
+        jsonb medication_details "Structured array of prescribed drugs"
+        text instructions "General patient dietary & intake advice"
+        timestamptz issued_at "Prescription issue timestamp"
+    }
+
+    AuditLog {
+        uuid audit_id PK "UUID v4 primary key"
+        varchar api_name "Executing service or resolver name"
+        text error "Serialized error message and stack trace"
+        enum action "PENDING | INVESTIGATING | RESOLVED | IGNORED"
+        uuid user_id FK "Authenticated user UUID (nullable)"
+        inet ip_address "Origin client IP address"
+        timestamptz created_at "Incident timestamp"
+    }
+```
+
+### Entity Schema Definitions
+
+#### 1. `users` Table
+Stores authentication identity credentials, role permissions, account lifecycle status, and multi-factor authentication security state.
+- **Constraints**: `email` UNIQUE index.
+- **Relationships**: `1:1` with `profiles`, `1:1` with `doctors`, `1:N` with `consultations` (as patient), `1:N` with `audit_logs`.
+
+#### 2. `profiles` Table
+Stores personal patient and doctor demographic details.
+- **Constraints**: `user_id` UNIQUE foreign key referencing `users(user_id)` with `ON DELETE CASCADE`.
+
+#### 3. `doctors` Table
+Maintains medical licensure, clinical qualifications, specialization, verification review status, and consultation fees.
+- **Constraints**: `user_id` UNIQUE foreign key, `license_number` UNIQUE.
+- **Relationships**: `1:N` with `availability_slots` (`CASCADE`), `1:N` with `consultations` (`CASCADE`).
+
+#### 4. `availability_slots` Table
+Stores doctor appointment availability blocks.
+- **Constraints**: Composite index on `(doctor_id, status)` for fast lookup during patient discovery.
+- **Foreign Key**: `doctor_id` references `doctors(doctor_id)` with `CASCADE` on delete.
+
+#### 5. `consultations` Table
+Tracks patient-doctor appointment sessions through their complete state machine: `PENDING_PAYMENT` &rarr; `CONFIRMED` &rarr; `COMPLETED` (or `CANCELLED` / `RESCHEDULED`).
+- **Foreign Keys**: `patient_id` references `users(user_id)`, `doctor_id` references `doctors(doctor_id)`, `slot_id` references `availability_slots(slot_id)` with `ON DELETE SET NULL`.
+- **Hold Locks**: `hold_expires_at` tracks temporary slot holds during checkout.
+
+#### 6. `payments` Table
+Manages financial transactions, payment gateway references, payment methods, and settlement states (`PENDING`, `PAID`, `REFUNDED`).
+- **Constraints**: `transaction_reference` UNIQUE.
+- **Foreign Key**: `consultation_id` references `consultations(consultation_id)` with `CASCADE` on delete.
+
+#### 7. `prescriptions` Table
+Stores clinical diagnoses and digital medication charts issued by doctors.
+- **Column `medication_details`**: PostgreSQL `JSONB` array of structured medication objects:
+  ```json
+  [
+    {
+      "name": "Ashwagandha Tablet",
+      "dosage": "500mg",
+      "frequency": "Twice daily",
+      "duration": "30 days",
+      "instructions": "Take after meals with warm milk"
+    }
+  ]
+  ```
+
+#### 8. `audit_logs` Table
+Maintains security audit events, unhandled application exceptions, API error traces, and administrative resolution workflows (`PENDING`, `INVESTIGATING`, `RESOLVED`, `IGNORED`).
+
+---
+
+## Security Architecture & Zero-Trust Model
+
+The platform enforces a Defense-in-Depth, Zero-Trust architectural design across every layer of the system.
+
+```mermaid
+graph TD
+    Client[Client Request] --> Helmet[Helmet & CORS Middleware]
+    Helmet --> PublicGuard{PublicApiGuard}
+    PublicGuard -- "@Public()" --> Resolver[GraphQL Resolver Execution]
+    PublicGuard -- Protected --> TokenExtract[Extract JWT from Cookie or Header]
+    TokenExtract --> JWTVerify{Verify JWT Signature & Expiry}
+    JWTVerify -- Invalid / Expired --> 401[401 Unauthorized]
+    JWTVerify -- Valid --> UserStatusCheck{Check User Status}
+    UserStatusCheck -- SUSPENDED / INACTIVE --> 403[403 Forbidden]
+    UserStatusCheck -- ACTIVE --> RolesGuard{RolesGuard}
+    RolesGuard -- Role Mismatch --> 403Role[403 Forbidden - Insufficient Permissions]
+    RolesGuard -- Role Authorized --> Decorator[Inject @CurrentUserId()]
+    Decorator --> Resolver
+    Resolver --> Service[Service Layer with handleServiceError]
+    Service -- Exception Caught --> AuditLog[(PostgreSQL audit_logs)]
+```
+
+### 1. Zero-Trust Access Pipeline
+
+1. **Global `PublicApiGuard`**: Every GraphQL query and mutation is protected by default. Only operations decorated with `@Public()` (such as `signup`, `login`, and public doctor queries) bypass the authentication barrier.
+2. **Account Status Verification**: Active sessions verify that `user.status === 'ACTIVE'`. Suspended or inactive accounts are rejected immediately before resolving domain data.
+3. **`RolesGuard` Enforcement**: Evaluates role requirements specified via `@Roles(UserRole.DOCTOR, UserRole.ADMIN)`. Access is rejected with `ForbiddenException` if the authenticated user's role does not match.
+4. **Context Identity Injection**: Resolvers access caller identity via `@CurrentUserId()` and `@CurrentUser()` decorators extracted directly from the verified token payload.
+
+---
+
+### 2. Dual-Mode Token Authentication
+
+The API provides flexible, secure authentication across web browsers and mobile/native applications:
+
+- **Web Clients (Zero-XSS Storage)**: The server automatically issues the `jwt_access_token` as an `HTTP-Only`, `Secure`, `SameSite=Lax` cookie. Web application JavaScript cannot read the token, mitigating Cross-Site Scripting (XSS) exfiltration attacks.
+- **Mobile & Third-Party APIs**: Clients can supply the JWT via standard HTTP headers:
+  ```http
+  Authorization: Bearer <jwt_access_token>
+  ```
+
+---
+
+### 3. Multi-Factor Authentication (MFA / 2FA) Deep Dive
+
+Amrutam implements a high-security Two-Factor Authentication system based on Time-based One-Time Passwords (TOTP, RFC 6238) and Google Authenticator:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Client
+    participant API as AuthResolver / AuthService
+    participant Redis as Redis Cache
+    participant DB as PostgreSQL
+
+    User->>Client: Enter Email & Password
+    Client->>API: mutation login(email, password)
+    API->>DB: Verify password with bcrypt
+    alt MFA Enabled on User Account
+        API-->>Client: { message: "MFA verification required", mfa_required: true, mfa_ticket: "<signed-jwt-5m>" }
+        Client->>User: Prompt for 6-digit Authenticator TOTP or Backup Code
+        User->>Client: Enter 6-digit TOTP Code
+        Client->>API: mutation verifyMfaLogin(mfa_ticket, code)
+        API->>Redis: Check replay key `mfa:used:${userId}:${code}`
+        alt Code Already Used
+            API-->>Client: 400 Bad Request: "Code already used"
+        else Code Fresh
+            API->>DB: Fetch encrypted mfa_secret
+            API->>API: Decrypt secret via AES-256-GCM & verify TOTP (30s window)
+            API->>Redis: SETEX `mfa:used:${userId}:${code}` 60s
+            API-->>Client: "Logged in successfully" (Sets jwt_access_token cookie)
+        end
+    else MFA Disabled
+        API-->>Client: "Logged in successfully" (Sets jwt_access_token cookie)
+    end
+```
+
+#### Key MFA Security Features:
+
+1. **2-Step Login Ticket Handshake**:
+   - When an MFA-enabled user logs in with email and password, the API does **not** grant access tokens.
+   - Instead, it signs a temporary, short-lived `mfa_ticket` (5-minute TTL, `purpose: 'MFA_PENDING'`).
+   - The user must call `verifyMfaLogin(input: { mfa_ticket, code })` to exchange the ticket for full access credentials.
+2. **AES-256-GCM Authenticated Encryption at Rest**:
+   - TOTP secrets are **never stored in plaintext**.
+   - Before writing to PostgreSQL, secrets are encrypted using `aes-256-gcm` with random 16-byte initialization vectors (`IV`), authentication tags, and key derivation using `scryptSync` from `JWT_SECRET`.
+3. **Redis Replay Attack Prevention**:
+   - Each successfully validated 6-digit TOTP code is cached in Redis under `mfa:used:${userId}:${code}` for 60 seconds.
+   - Attempting to replay the same TOTP within its 30-second window is rejected with a `400 Bad Request`.
+4. **Bcrypt-Hashed Emergency Backup Recovery Codes**:
+   - Upon enabling MFA, users receive 8 single-use emergency backup recovery codes (e.g. `a1b2c3d4`).
+   - Backup codes are stored in PostgreSQL as `bcrypt` hashes (10 salt rounds).
+   - Once a backup code is redeemed during `verifyMfaLogin`, it is atomically deleted from the user's account to prevent reuse.
+
+---
+
+### 4. Concurrency Control & Double-Booking Prevention
+
+Telemedicine appointment booking requires strict concurrency guarantees to prevent two patients from reserving the same doctor slot simultaneously.
+
+1. **Transactional Slot Status Transitions**:
+   - Slots transition atomically: `AVAILABLE` &rarr; `BOOKED`.
+   - When `bookConsultation` is called, the slot is locked inside a transactional unit of work. If the slot is already `BOOKED`, the transaction immediately aborts with `ConflictException('This slot has already been booked')`.
+2. **Hold Reservation Expiry (`hold_expires_at`)**:
+   - Initial bookings start in `PENDING_PAYMENT` with a configurable hold timestamp (e.g. 15 minutes).
+   - If payment is not completed before hold expiration, scheduled jobs or booking queries release the slot back to `AVAILABLE`.
+3. **Atomic Reschedule & Cancellation**:
+   - Cancelling a consultation automatically marks the slot back to `AVAILABLE`.
+   - Rescheduling atomically frees the old slot and reserves the new slot within a single transaction.
+
+---
+
+### 5. System Audit Logging & Incident Tracking
+
+The API integrates real-time error auditing directly into `handleServiceError`:
+- **Automated Capture**: Any unhandled internal server error automatically logs the error message, execution stack, calling service name, user ID, and client IP address into the `audit_logs` table.
+- **Incident Lifecycle**: Admins can query audit logs by API name, user, or status, and update the investigation lifecycle (`PENDING` &rarr; `INVESTIGATING` &rarr; `RESOLVED` / `IGNORED`).
+
+---
+
+## Comprehensive User Flows & Lifecycle Diagrams
 
 ### Lifecycle Sequence Diagram
 
