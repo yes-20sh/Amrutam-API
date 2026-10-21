@@ -1,9 +1,26 @@
-import { Module } from '@nestjs/common';
-
+import 'dotenv/config';
+import { APP_GUARD } from '@nestjs/core';
+import { PublicApiGuard } from './common/gaurds/public-api.guard';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import helmet from 'helmet';
+import cors from 'cors';
+import { GraphqlModule } from './core/graphql/graphql.module';
+import { DatabaseModule } from './core/database/database.module';
+import { PaginationModule } from './common/pagination/pagination.module';
+import { AuthModule } from './features/auth/auth.module';
+import { AuthMiddleware } from './core/middleware/auth.middleware';
 
 @Module({
-  imports: [],
-  controllers: [],
-  providers: [],
+  imports: [
+    GraphqlModule,
+    DatabaseModule,
+    PaginationModule,
+    AuthModule,
+  ],
+  providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(helmet(), cors(), AuthMiddleware).forRoutes('*');
+  }
+}

@@ -1,6 +1,6 @@
 import { Response, Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '../../schema/user.entity';
+import { User } from '../../schemas/user.schema';
 
 export function getAuthCookieName(): string {
   return process.env.JWT_COOKIE_NAME || 'jwt_access_token';

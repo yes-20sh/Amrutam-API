@@ -1,0 +1,25 @@
+meta {
+  name: Me
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query Me {
+    me {
+      user_id
+      email
+      role
+      profile {
+        full_name
+        phone
+      }
+    }
+  }
+}

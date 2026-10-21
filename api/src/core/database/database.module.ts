@@ -2,7 +2,8 @@ import { Global, Logger, Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { DatabaseConfigService } from './database.service';
-import { SCHEMAS } from '../../schema';
+import { SCHEMAS } from '../../schemas/schemas';
+
 
 @Global()
 @Module({
