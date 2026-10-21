@@ -49,12 +49,32 @@ bunTest.mock.module('../../schemas/audit_log.schema', () => ({
   AuditLog: class AuditLog { },
 }));
 
+type RawQueryResult = Record<string, string | number | null>;
+
+interface MockQueryBuilder {
+  select: jest.Mock;
+  addSelect: jest.Mock;
+  where: jest.Mock;
+  andWhere: jest.Mock;
+  setParameters: jest.Mock;
+  groupBy: jest.Mock;
+  addGroupBy: jest.Mock;
+  orderBy: jest.Mock;
+  addOrderBy: jest.Mock;
+  innerJoin: jest.Mock;
+  leftJoin: jest.Mock;
+  limit: jest.Mock;
+  getRawOne: jest.Mock;
+  getRawMany: jest.Mock;
+  getCount: jest.Mock;
+}
+
 function createMockQueryBuilder(
-  rawOneResult: any = {},
-  rawManyResult: any[] = [],
-  rawCountResult: number = 0,
-) {
-  const qb: any = {
+  rawOneResult: RawQueryResult = {},
+  rawManyResult: RawQueryResult[] = [],
+  rawCountResult = 0,
+): MockQueryBuilder {
+  const qb: MockQueryBuilder = {
     select: bunTest.mock().mockReturnThis(),
     addSelect: bunTest.mock().mockReturnThis(),
     where: bunTest.mock().mockReturnThis(),

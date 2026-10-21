@@ -2,6 +2,10 @@ import { Response, Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../../schemas/user.schema';
 
+type RequestWithCookies = Request & {
+  cookies?: Record<string, string | undefined>;
+};
+
 export function getAuthCookieName(): string {
   return process.env.JWT_COOKIE_NAME || 'jwt_access_token';
 }
@@ -67,9 +71,10 @@ export function extractTokenFromRequest(req?: Request): string | null {
   }
 
   // 3. req.cookies if cookie-parser is installed
-  if ((req as any).cookies) {
+  const cookies = (req as RequestWithCookies).cookies;
+  if (cookies) {
     const cookieName = getAuthCookieName();
-    const token = (req as any).cookies[cookieName] || (req as any).cookies['access_token'];
+    const token = cookies[cookieName] || cookies.access_token;
     if (token) return token;
   }
 

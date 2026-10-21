@@ -63,8 +63,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       this.subClient.on('error', (err) => {
         this.logger.warn(`Redis subscriber connection error: ${err.message}`);
       });
-    } catch (err: any) {
-      this.logger.error(`Failed to initialize Redis clients: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.error(`Failed to initialize Redis clients: ${this.getErrorMessage(err)}`);
     }
   }
 
@@ -76,9 +76,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.client.config('SET', 'notify-keyspace-events', 'Ex');
       this.logger.log('Redis keyspace notifications (Ex) enabled for expiry tracking');
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.logger.warn(
-        `Note on notify-keyspace-events: Managed Redis (e.g. Upstash) restricts CONFIG SET. (Fallback reconciliation worker handles expiry). Details: ${err.message}`,
+        `Note on notify-keyspace-events: Managed Redis (e.g. Upstash) restricts CONFIG SET. (Fallback reconciliation worker handles expiry). Details: ${this.getErrorMessage(err)}`,
       );
     }
   }
@@ -102,13 +102,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = `slot:hold:${slotId}`;
       const result = await this.client.set(key, holderIdentifier, 'EX', ttlSeconds, 'NX');
       return result === 'OK';
-    } catch (err: any) {
-      if (err.message?.includes('NOPERM') || err.message?.includes('READONLY')) {
+    } catch (err: unknown) {
+      const message = this.getErrorMessage(err);
+      if (message.includes('NOPERM') || message.includes('READONLY')) {
         this.logger.error(
           "Redis Write Permission Denied: Your REDIS_URL uses 'default_ro' (Read-Only). To enable slot holds and cache writes, please provide the primary (read-write) Upstash URL ('default'). Falling back to DB pessimistic lock.",
         );
       } else {
-        this.logger.warn(`Redis acquireSlotHold error: ${err.message}`);
+        this.logger.warn(`Redis acquireSlotHold error: ${message}`);
       }
       return true; // Graceful fallback to PostgreSQL row lock
     }
@@ -123,8 +124,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = `slot:hold:${slotId}`;
       const deleted = await this.client.del(key);
       return deleted > 0;
-    } catch (err: any) {
-      this.logger.warn(`Redis releaseSlotHold error for slot ${slotId}: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`Redis releaseSlotHold error for slot ${slotId}: ${this.getErrorMessage(err)}`);
       return false;
     }
   }
@@ -144,19 +145,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const data = await this.client.get(key);
       return data ? (JSON.parse(data) as T) : null;
-    } catch (err: any) {
-      this.logger.warn(`Cache read failed for key "${key}": ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`Cache read failed for key "${key}": ${this.getErrorMessage(err)}`);
       return null;
     }
   }
 
-  async setCache(key: string, data: any, ttlSeconds = 120): Promise<void> {
+  async setCache(key: string, data: unknown, ttlSeconds = 120): Promise<void> {
     if (!this.client || !this.isConnected) return;
     try {
       const serialized = JSON.stringify(data);
       await this.client.set(key, serialized, 'EX', ttlSeconds);
-    } catch (err: any) {
-      this.logger.warn(`Cache write failed for key "${key}": ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`Cache write failed for key "${key}": ${this.getErrorMessage(err)}`);
     }
   }
 
@@ -164,8 +165,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     if (!this.client || !this.isConnected) return;
     try {
       await this.client.del(key);
-    } catch (err: any) {
-      this.logger.warn(`Cache delete failed for key "${key}": ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`Cache delete failed for key "${key}": ${this.getErrorMessage(err)}`);
     }
   }
 
@@ -176,9 +177,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (keys && keys.length > 0) {
         await this.client.del(...keys);
       }
-    } catch (err: any) {
-      this.logger.warn(`Cache pattern delete failed for "${pattern}": ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`Cache pattern delete failed for "${pattern}": ${this.getErrorMessage(err)}`);
     }
+  }
+
+  private getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
   }
 
   /**

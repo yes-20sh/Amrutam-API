@@ -10,6 +10,11 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from '../decorator/public.decorator';
 import { extractTokenFromRequest } from '../../utils/cookie/cookie.util';
+import { JwtPayload } from '../decorator/current-user.decorator';
+
+export interface AuthenticatedRequest extends Request {
+  user?: JwtPayload;
+}
 
 /**
  * PublicApiGuard protects all endpoints by default unless explicitly
@@ -43,12 +48,12 @@ export class PublicApiGuard implements CanActivate {
     }
 
     try {
-      const decoded = this.jwtService.verify(token, {
+      const decoded = this.jwtService.verify<JwtPayload>(token, {
         secret:
           process.env.JWT_SECRET ||
           'super-secret-jwt-key-for-development-change-in-prod',
       });
-      (request as any).user = decoded;
+      request.user = decoded;
     } catch {
       throw new UnauthorizedException(
         'Authentication token is invalid or has expired',
@@ -62,11 +67,11 @@ export class PublicApiGuard implements CanActivate {
    * Extracts the underlying HTTP request from the ExecutionContext.
    * Supports both HTTP and GraphQL contexts.
    */
-  private getRequest(context: ExecutionContext): Request {
+  private getRequest(context: ExecutionContext): AuthenticatedRequest {
     if ((context.getType() as string) === 'graphql') {
       const gqlContext = GqlExecutionContext.create(context);
-      return gqlContext.getContext()?.req;
+      return gqlContext.getContext<{ req: AuthenticatedRequest }>().req;
     }
-    return context.switchToHttp().getRequest();
+    return context.switchToHttp().getRequest<AuthenticatedRequest>();
   }
 }

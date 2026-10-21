@@ -7,7 +7,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, FindOptionsWhere } from 'typeorm';
 
 import { Consultation } from '../../schemas/consultation.schema';
 import { Doctor } from '../../schemas/doctor.schema';
@@ -440,7 +440,7 @@ export class ConsultationService {
         where: { user_id: userId },
       });
 
-      const whereConditions: any[] = [{ patient_id: userId }];
+      const whereConditions: FindOptionsWhere<Consultation>[] = [{ patient_id: userId }];
       if (doctor) {
         whereConditions.push({ doctor_id: doctor.doctor_id });
       }

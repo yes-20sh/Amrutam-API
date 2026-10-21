@@ -7,6 +7,7 @@ import type { PatientAnalyticsEntity } from './entities/patient-analytics.entity
 import type { ClinicalAndSystemAnalyticsEntity } from './entities/clinical-and-system-analytics.entity';
 import type { AnalyticsResolver as AnalyticsResolverType } from './analytics.resolver';
 import type { AnalyticsService as AnalyticsServiceType } from './analytics.service';
+import { TimeGranularity } from './dto/time-granularity.enum';
 
 const bunTest = require('bun:test') as {
   beforeAll: (callback: () => void | Promise<void>) => void;
@@ -62,7 +63,7 @@ describe('AnalyticsResolver', () => {
   const mockFilter: AnalyticsFilterInput = {
     startDate: new Date('2026-01-01T00:00:00Z'),
     endDate: new Date('2026-01-31T23:59:59Z'),
-    granularity: 'DAY' as any,
+    granularity: TimeGranularity.DAY,
   };
 
   beforeAll(async () => {

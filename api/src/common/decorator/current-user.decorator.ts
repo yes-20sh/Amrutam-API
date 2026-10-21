@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
+import type { Request } from 'express';
 
 export interface JwtPayload {
   sub: string;
@@ -13,12 +14,18 @@ export interface JwtPayload {
   exp?: number;
 }
 
-function getRequest(context: ExecutionContext): any {
+interface AuthenticatedRequest extends Request {
+  user?: JwtPayload;
+}
+
+function getRequest(
+  context: ExecutionContext,
+): AuthenticatedRequest | undefined {
   if ((context.getType() as string) === 'graphql') {
     const gqlContext = GqlExecutionContext.create(context);
-    return gqlContext.getContext()?.req;
+    return gqlContext.getContext<{ req?: AuthenticatedRequest }>()?.req;
   }
-  return context.switchToHttp().getRequest();
+  return context.switchToHttp().getRequest<AuthenticatedRequest>();
 }
 
 /**
@@ -74,4 +81,3 @@ export const OptionalUser = createParamDecorator(
     return data ? user[data] : user;
   },
 );
-

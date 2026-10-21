@@ -5,8 +5,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response, NextFunction } from 'express';
+import type { JwtPayload } from '../../common/decorator/current-user.decorator';
 import { extractTokenFromRequest } from '../../utils/cookie/cookie.util';
 import { requestContext } from '../context/request-context';
+
+type AuthenticatedRequest = Request & {
+  user?: JwtPayload;
+};
 
 /**
  * AuthMiddleware extracts and validates JWT access tokens on incoming requests.
@@ -33,13 +38,13 @@ export class AuthMiddleware implements NestMiddleware {
 
     if (token) {
       try {
-        const decoded = this.jwtService.verify<Record<string, unknown>>(token, {
+        const decoded = this.jwtService.verify<JwtPayload>(token, {
           secret:
             process.env.JWT_SECRET ||
             'super-secret-jwt-key-for-development-change-in-prod',
         });
-        (req as any).user = decoded;
-        userId = ((decoded as any)?.sub as string) || null;
+        (req as AuthenticatedRequest).user = decoded;
+        userId = decoded.sub;
       } catch {
         this.logger.debug(
           'Token present in request could not be verified by AuthMiddleware',

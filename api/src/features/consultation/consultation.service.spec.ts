@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConsultationType } from '../../common/enum/consultation-type.enum';
 import type { DataSource, Repository } from 'typeorm';
 import type { RedisService } from '../../core/redis/redis.service';
 import type { Consultation } from '../../schemas/consultation.schema';
@@ -160,7 +161,7 @@ describe('ConsultationService', () => {
       doctor_id: doctorId,
       slot_id: slotId,
       scheduled_at: new Date('2026-11-01T10:00:00Z'),
-      consultation_type: 'VIDEO' as any,
+      consultation_type: ConsultationType.ONLINE,
       reason: 'General checkup',
     };
 
@@ -444,7 +445,7 @@ describe('ConsultationService', () => {
         consultationId,
       );
 
-      expect(result).toBe(mockConsultation as any);
+      expect(result).toBe(mockConsultation);
     });
   });
 
@@ -458,7 +459,7 @@ describe('ConsultationService', () => {
 
       const result = await service.myConsultations(patientUserId);
 
-      expect(result).toBe(consultationsList as any);
+      expect(result).toBe(consultationsList);
       expect(consultationRepository.find).toHaveBeenCalledWith({
         where: [{ patient_id: patientUserId }],
         relations: {
@@ -476,7 +477,7 @@ describe('ConsultationService', () => {
 
       const result = await service.myConsultations(doctorUserId);
 
-      expect(result).toBe(consultationsList as any);
+      expect(result).toBe(consultationsList);
       expect(consultationRepository.find).toHaveBeenCalledWith({
         where: [{ patient_id: doctorUserId }, { doctor_id: doctorId }],
         relations: {

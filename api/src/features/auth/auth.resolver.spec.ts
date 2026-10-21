@@ -1,3 +1,5 @@
+import type { Request, Response } from 'express';
+import type { JwtPayload } from '../../common/decorator/current-user.decorator';
 import type { SignupDto } from './dto/signup.dto';
 import type { LoginDto } from './dto/login.dto';
 import type { VerifyMfaLoginDto } from './dto/verify-mfa-login.dto';
@@ -45,7 +47,10 @@ describe('AuthResolver', () => {
   };
 
   const userId = 'user-123';
-  const mockContext = { req: {} as any, res: {} as any };
+  const mockContext = {
+    req: {} as unknown as Request,
+    res: {} as unknown as Response,
+  };
 
   beforeAll(async () => {
     const { AuthResolver } = await import('./auth.resolver.js');
@@ -173,11 +178,15 @@ describe('AuthResolver', () => {
 
   describe('me', () => {
     it('retrieves current authenticated user entity', async () => {
-      const userPayload = { sub: userId, email: 'test@example.com' };
+      const userPayload: JwtPayload = {
+        sub: userId,
+        email: 'test@example.com',
+        role: 'PATIENT',
+      };
       const userEntity = { user_id: userId, email: 'test@example.com' } as UserEntity;
       authService.me.mockResolvedValue(userEntity);
 
-      const result = await resolver.me(userPayload as any, mockContext);
+      const result = await resolver.me(userPayload, mockContext);
 
       expect(result).toBe(userEntity);
       expect(authService.me).toHaveBeenCalledWith(userPayload, mockContext.req);

@@ -30,7 +30,7 @@ export class RolesGuard implements CanActivate {
     return requiredRoles.some((role) => userRoles.includes(role));
   }
 
-  private getRequest(context: ExecutionContext): any {
+  private getRequest(context: ExecutionContext) {
     if ((context.getType() as string) === 'graphql') {
       const gqlContext = GqlExecutionContext.create(context);
       return gqlContext.getContext()?.req;

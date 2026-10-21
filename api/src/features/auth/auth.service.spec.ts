@@ -8,6 +8,7 @@ import {
 import type { Repository } from 'typeorm';
 import type { JwtService } from '@nestjs/jwt';
 import type { RedisService } from '../../core/redis/redis.service';
+import type { Response } from 'express';
 import type { User } from '../../schemas/user.schema';
 import type { Profile } from '../../schemas/profile.schema';
 import { UserRole } from '../../common/enum/user-role.enum';
@@ -28,10 +29,10 @@ const bunTest = require('bun:test') as {
 const { beforeAll, beforeEach, describe, expect, it } = bunTest;
 
 bunTest.mock.module('../../schemas/user.schema', () => ({
-  User: class User {},
+  User: class User { },
 }));
 bunTest.mock.module('../../schemas/profile.schema', () => ({
-  Profile: class Profile {},
+  Profile: class Profile { },
 }));
 
 const mockBcrypt = {
@@ -135,7 +136,7 @@ describe('AuthService', () => {
     it('creates a new user and profile and returns confirmation', async () => {
       userRepository.findOne.mockResolvedValue(null);
 
-      const res = {} as any;
+      const res = {} as unknown as Response;
       const result = await service.signup(
         {
           email: '  test@example.com ',
@@ -228,7 +229,7 @@ describe('AuthService', () => {
       });
       mockBcrypt.compare.mockResolvedValueOnce(true);
 
-      const res = {} as any;
+      const res = {} as unknown as Response;
       const response = await service.login(
         { email, password: 'validPassword' },
         res,
@@ -254,7 +255,7 @@ describe('AuthService', () => {
       });
       mockBcrypt.compare.mockResolvedValueOnce(true);
 
-      const res = {} as any;
+      const res = {} as unknown as Response;
       const response = await service.login(
         { email, password: 'validPassword' },
         res,
@@ -312,7 +313,7 @@ describe('AuthService', () => {
       redisClient.get.mockResolvedValueOnce(null);
       mockMfaUtil.verifyTotpCode.mockReturnValueOnce(true);
 
-      const res = {} as any;
+      const res = {} as unknown as Response;
       const result = await service.verifyMfaLogin(
         { mfa_ticket: 'valid_ticket', code: '123456' },
         res,
@@ -342,7 +343,7 @@ describe('AuthService', () => {
       mockMfaUtil.verifyTotpCode.mockReturnValueOnce(false); // TOTP fails
       mockMfaUtil.verifyBackupCode.mockResolvedValueOnce({ isValid: true, matchedIndex: 0 }); // Backup code matches
 
-      const res = {} as any;
+      const res = {} as unknown as Response;
       const result = await service.verifyMfaLogin(
         { mfa_ticket: 'valid_ticket', code: 'backup_code' },
         res,
@@ -475,7 +476,7 @@ describe('AuthService', () => {
 
   describe('logout', () => {
     it('clears auth cookie and returns confirmation', async () => {
-      const res = {} as any;
+      const res = {} as unknown as Response;
       const result = await service.logout(res);
 
       expect(result).toBe('Logged out successfully');
@@ -485,12 +486,12 @@ describe('AuthService', () => {
 
   describe('me', () => {
     it('returns the authenticated user entity', async () => {
-      const mockUser = { user_id: userId, email, profile: null };
+      const mockUser = { user_id: userId, email, profile: null } as unknown as User;
       userRepository.findOne.mockResolvedValue(mockUser);
 
       const result = await service.me({ sub: userId, email, role: UserRole.DOCTOR });
 
-      expect(result).toBe(mockUser as any);
+      expect(result).toBe(mockUser);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { user_id: userId },
         relations: { profile: true },

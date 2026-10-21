@@ -101,10 +101,10 @@ export class ConsultationExpiryService
       }
 
       await queryRunner.commitTransaction();
-    } catch (err: any) {
+    } catch (err: unknown) {
       await queryRunner.rollbackTransaction();
       this.logger.error(
-        `Failed to execute compensation for slot ${slotId}: ${err.message}`,
+        `Failed to execute compensation for slot ${slotId}: ${this.getErrorMessage(err)}`,
       );
     } finally {
       await queryRunner.release();
@@ -142,10 +142,14 @@ export class ConsultationExpiryService
             await this.redisService.releaseSlotHold(consultation.slot_id);
           }
         }
-      } catch (err: any) {
-        this.logger.warn(`Reconciliation worker warning: ${err.message}`);
+      } catch (err: unknown) {
+        this.logger.warn(`Reconciliation worker warning: ${this.getErrorMessage(err)}`);
       }
     }, 60000);
+  }
+
+  private getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
   }
 
   onModuleDestroy() {

@@ -1,3 +1,4 @@
+import { ConsultationType } from '../../common/enum/consultation-type.enum';
 import type { CreateConsultationDto } from './dto/create-consultation.dto';
 import type { RescheduleConsultationDto } from './dto/reschedule-consultation.dto';
 import type { ConsultationEntity } from './entities/consultation.entity';
@@ -62,7 +63,7 @@ describe('ConsultationResolver', () => {
         doctor_id: 'doc-123',
         slot_id: 'slot-123',
         scheduled_at: new Date('2026-11-01T10:00:00Z'),
-        consultation_type: 'VIDEO' as any,
+        consultation_type: ConsultationType.ONLINE,
       };
       consultationService.bookConsultation.mockResolvedValue(
         'Consultation reserved successfully',
