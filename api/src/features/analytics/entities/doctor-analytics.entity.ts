@@ -1,76 +1,76 @@
 import { ObjectType, Field, Float, Int, ID } from '@nestjs/graphql';
 
-@ObjectType({ description: 'Count of doctors grouped by verification status' })
+@ObjectType()
 export class DoctorVerificationStatusCount {
-  @Field(() => String, { description: 'Verification status (PENDING, VERIFIED, REJECTED)' })
+  @Field(() => String)
   status: string;
 
-  @Field(() => Int, { description: 'Number of doctors in this state' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Doctor distribution across clinical specializations' })
+@ObjectType()
 export class DoctorSpecializationCount {
-  @Field(() => String, { description: 'Specialization name (e.g. Ayurveda, Dermatology)' })
+  @Field(() => String)
   specialization: string;
 
-  @Field(() => Int, { description: 'Count of doctors' })
+  @Field(() => Int)
   count: number;
 
-  @Field(() => Float, { description: 'Percentage of total doctor pool' })
+  @Field(() => Float)
   percentage: number;
 }
 
-@ObjectType({ description: 'Platform slot generation and capacity utilization metrics' })
+@ObjectType()
 export class DoctorCapacityMetrics {
-  @Field(() => Int, { description: 'Total availability slots created' })
+  @Field(() => Int)
   total_slots: number;
 
-  @Field(() => Int, { description: 'Slots successfully reserved by patients' })
+  @Field(() => Int)
   booked_slots: number;
 
-  @Field(() => Int, { description: 'Slots currently unbooked/available' })
+  @Field(() => Int)
   available_slots: number;
 
-  @Field(() => Float, { description: 'Ratio of booked to total published slots' })
+  @Field(() => Float)
   utilization_rate: number;
 }
 
-@ObjectType({ description: 'Top performing doctor by consultations and revenue' })
+@ObjectType()
 export class TopDoctorPerformer {
-  @Field(() => ID, { description: 'Doctor UUID' })
+  @Field(() => ID)
   doctor_id: string;
 
-  @Field(() => String, { description: 'Doctor full name' })
+  @Field(() => String)
   full_name: string;
 
-  @Field(() => String, { description: 'Primary specialization' })
+  @Field(() => String)
   specialization: string;
 
-  @Field(() => Float, { description: 'Standard consultation fee' })
+  @Field(() => Float)
   consultation_fee: number;
 
-  @Field(() => Int, { description: 'Completed consultations count in window' })
+  @Field(() => Int)
   completed_consultations: number;
 
-  @Field(() => Float, { description: 'Total gross revenue generated in INR' })
+  @Field(() => Float)
   total_revenue: number;
 }
 
-@ObjectType({ description: 'Doctor network performance, capacity, and credentials analytics' })
+@ObjectType()
 export class DoctorAnalyticsEntity {
-  @Field(() => Int, { description: 'Total registered doctors' })
+  @Field(() => Int)
   total_doctors: number;
 
-  @Field(() => [DoctorVerificationStatusCount], { description: 'Verification pipeline breakdown' })
+  @Field(() => [DoctorVerificationStatusCount])
   verification_breakdown: DoctorVerificationStatusCount[];
 
-  @Field(() => [DoctorSpecializationCount], { description: 'Distribution across medical specializations' })
+  @Field(() => [DoctorSpecializationCount])
   specialization_breakdown: DoctorSpecializationCount[];
 
-  @Field(() => DoctorCapacityMetrics, { description: 'Slot capacity and booking efficiency' })
+  @Field(() => DoctorCapacityMetrics)
   capacity: DoctorCapacityMetrics;
 
-  @Field(() => [TopDoctorPerformer], { description: 'Top 10 performing doctors ranked by revenue and activity' })
+  @Field(() => [TopDoctorPerformer])
   top_doctors: TopDoctorPerformer[];
 }

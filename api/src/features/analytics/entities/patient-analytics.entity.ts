@@ -1,49 +1,49 @@
 import { ObjectType, Field, Float, Int } from '@nestjs/graphql';
 
-@ObjectType({ description: 'Patient segmentation by consultation repeat booking frequency' })
+@ObjectType()
 export class PatientRetentionCohort {
-  @Field(() => String, { description: 'Cohort label (e.g. 1 Consultation, 2-3 Consultations, 4+ Consultations)' })
+  @Field(() => String)
   cohort: string;
 
-  @Field(() => Int, { description: 'Number of distinct patients in this cohort' })
+  @Field(() => Int)
   patient_count: number;
 }
 
-@ObjectType({ description: 'Patient distribution across reported genders' })
+@ObjectType()
 export class PatientGenderCount {
-  @Field(() => String, { description: 'Gender label (MALE, FEMALE, OTHER, NOT_SPECIFIED)' })
+  @Field(() => String)
   gender: string;
 
-  @Field(() => Int, { description: 'Number of patients' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'New patient signups over time' })
+@ObjectType()
 export class PatientSignupTrendPoint {
-  @Field(() => String, { description: 'Date timestamp of the bucket' })
+  @Field(() => String)
   date: string;
 
-  @Field(() => Int, { description: 'New patient accounts registered' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Patient growth, demographics, and retention intelligence' })
+@ObjectType()
 export class PatientAnalyticsEntity {
-  @Field(() => Int, { description: 'Total patients registered on the platform' })
+  @Field(() => Int)
   total_patients: number;
 
-  @Field(() => Int, { description: 'New patients registered within the reporting window' })
+  @Field(() => Int)
   new_signups_in_period: number;
 
-  @Field(() => Float, { description: 'Percentage of patients who booked more than 1 consultation' })
+  @Field(() => Float)
   repeat_consultation_rate: number;
 
-  @Field(() => [PatientRetentionCohort], { description: 'Repeat engagement frequency cohorts' })
+  @Field(() => [PatientRetentionCohort])
   retention_cohorts: PatientRetentionCohort[];
 
-  @Field(() => [PatientGenderCount], { description: 'Demographic breakdown by gender' })
+  @Field(() => [PatientGenderCount])
   gender_distribution: PatientGenderCount[];
 
-  @Field(() => [PatientSignupTrendPoint], { description: 'Registration volume timeline' })
+  @Field(() => [PatientSignupTrendPoint])
   signups_timeline: PatientSignupTrendPoint[];
 }

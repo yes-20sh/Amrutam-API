@@ -1,58 +1,58 @@
 import { ObjectType, Field, Float, Int } from '@nestjs/graphql';
 
-@ObjectType({ description: 'Data point representing revenue aggregated by time bucket' })
+@ObjectType()
 export class RevenueTimeSeriesPoint {
-  @Field(() => String, { description: 'Date timestamp of the bucket (e.g. YYYY-MM-DD)' })
+  @Field(() => String)
   date: string;
 
-  @Field(() => Float, { description: 'Settled revenue in this bucket' })
+  @Field(() => Float)
   revenue: number;
 
-  @Field(() => Int, { description: 'Count of successful transactions in this bucket' })
+  @Field(() => Int)
   transaction_count: number;
 }
 
-@ObjectType({ description: 'Revenue and count aggregated by payment status' })
+@ObjectType()
 export class RevenueByStatus {
-  @Field(() => String, { description: 'Payment status (e.g. PAID, PENDING, REFUNDED, FAILED)' })
+  @Field(() => String)
   status: string;
 
-  @Field(() => Float, { description: 'Total monetary value' })
+  @Field(() => Float)
   amount: number;
 
-  @Field(() => Int, { description: 'Total transaction count' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Revenue and count aggregated by payment method' })
+@ObjectType()
 export class RevenueByPaymentMethod {
-  @Field(() => String, { description: 'Payment gateway method (e.g. UPI, CARD, NETBANKING)' })
+  @Field(() => String)
   payment_method: string;
 
-  @Field(() => Float, { description: 'Total volume processed' })
+  @Field(() => Float)
   amount: number;
 
-  @Field(() => Int, { description: 'Number of transactions' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Detailed financial and revenue analytics' })
+@ObjectType()
 export class RevenueAnalyticsEntity {
-  @Field(() => Float, { description: 'Total successful revenue collected in window' })
+  @Field(() => Float)
   total_revenue: number;
 
-  @Field(() => Int, { description: 'Total successful transactions' })
+  @Field(() => Int)
   total_transactions: number;
 
-  @Field(() => Float, { description: 'Average monetary value per transaction' })
+  @Field(() => Float)
   average_transaction_value: number;
 
-  @Field(() => [RevenueByStatus], { description: 'Monetary volume and count by transaction status' })
+  @Field(() => [RevenueByStatus])
   revenue_by_status: RevenueByStatus[];
 
-  @Field(() => [RevenueByPaymentMethod], { description: 'Monetary volume and count by payment method' })
+  @Field(() => [RevenueByPaymentMethod])
   revenue_by_payment_method: RevenueByPaymentMethod[];
 
-  @Field(() => [RevenueTimeSeriesPoint], { description: 'Time series of revenue trends over the selected period' })
+  @Field(() => [RevenueTimeSeriesPoint])
   timeline: RevenueTimeSeriesPoint[];
 }

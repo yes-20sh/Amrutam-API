@@ -1,67 +1,67 @@
 import { ObjectType, Field, Float, Int } from '@nestjs/graphql';
 
-@ObjectType({ description: 'Consultation trends grouped by time bucket' })
+@ObjectType()
 export class ConsultationTimeSeriesPoint {
-  @Field(() => String, { description: 'Date timestamp of the bucket (e.g. YYYY-MM-DD)' })
+  @Field(() => String)
   date: string;
 
-  @Field(() => Int, { description: 'Total appointments scheduled in this bucket' })
+  @Field(() => Int)
   total: number;
 
-  @Field(() => Int, { description: 'Appointments completed successfully' })
+  @Field(() => Int)
   completed: number;
 
-  @Field(() => Int, { description: 'Appointments cancelled' })
+  @Field(() => Int)
   cancelled: number;
 }
 
-@ObjectType({ description: 'Count of consultations grouped by status' })
+@ObjectType()
 export class ConsultationStatusCount {
-  @Field(() => String, { description: 'Consultation status (e.g. BOOKED, COMPLETED, CANCELLED)' })
+  @Field(() => String)
   status: string;
 
-  @Field(() => Int, { description: 'Number of consultations' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Count of consultations grouped by delivery mode' })
+@ObjectType()
 export class ConsultationTypeCount {
-  @Field(() => String, { description: 'Consultation type (ONLINE or IN_PERSON)' })
+  @Field(() => String)
   type: string;
 
-  @Field(() => Int, { description: 'Number of consultations' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Booking frequency across hours of the day (0-23)' })
+@ObjectType()
 export class PeakBookingHour {
-  @Field(() => Int, { description: 'Hour of the day in 24h format (0 - 23)' })
+  @Field(() => Int)
   hour: number;
 
-  @Field(() => Int, { description: 'Number of appointments booked at this hour' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Comprehensive consultation and appointment operational analytics' })
+@ObjectType()
 export class ConsultationAnalyticsEntity {
-  @Field(() => Int, { description: 'Total appointments booked within window' })
+  @Field(() => Int)
   total_consultations: number;
 
-  @Field(() => Float, { description: 'Percentage of booked consultations that were completed' })
+  @Field(() => Float)
   completion_rate: number;
 
-  @Field(() => Float, { description: 'Percentage of booked consultations that were cancelled' })
+  @Field(() => Float)
   cancellation_rate: number;
 
-  @Field(() => [ConsultationStatusCount], { description: 'Distribution across lifecycle statuses' })
+  @Field(() => [ConsultationStatusCount])
   consultations_by_status: ConsultationStatusCount[];
 
-  @Field(() => [ConsultationTypeCount], { description: 'Distribution across online vs in-person modalities' })
+  @Field(() => [ConsultationTypeCount])
   consultations_by_type: ConsultationTypeCount[];
 
-  @Field(() => [ConsultationTimeSeriesPoint], { description: 'Appointment volume and completion trends over time' })
+  @Field(() => [ConsultationTimeSeriesPoint])
   timeline: ConsultationTimeSeriesPoint[];
 
-  @Field(() => [PeakBookingHour], { description: 'Hourly consultation booking density' })
+  @Field(() => [PeakBookingHour])
   peak_hours: PeakBookingHour[];
 }

@@ -1,61 +1,61 @@
 import { ObjectType, Field, Float, Int } from '@nestjs/graphql';
 
-@ObjectType({ description: 'Most frequently recorded clinical diagnosis' })
+@ObjectType()
 export class TopDiagnosisCount {
-  @Field(() => String, { description: 'Diagnosis or medical condition summary' })
+  @Field(() => String)
   diagnosis: string;
 
-  @Field(() => Int, { description: 'Count of prescriptions with this diagnosis' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Audit log errors aggregated by status/action' })
+@ObjectType()
 export class ErrorActionCount {
-  @Field(() => String, { description: 'Audit action status (PENDING, PROCESS, FIXED)' })
+  @Field(() => String)
   action: string;
 
-  @Field(() => Int, { description: 'Number of audit error logs' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'API endpoint with highest frequency of recorded failures' })
+@ObjectType()
 export class TopFailingApi {
-  @Field(() => String, { description: 'Context message or API name (e.g. Service.method)' })
+  @Field(() => String)
   api_name: string;
 
-  @Field(() => Int, { description: 'Total recorded errors' })
+  @Field(() => Int)
   error_count: number;
 }
 
-@ObjectType({ description: 'System error frequency over time' })
+@ObjectType()
 export class ErrorTimeSeriesPoint {
-  @Field(() => String, { description: 'Date timestamp of the bucket' })
+  @Field(() => String)
   date: string;
 
-  @Field(() => Int, { description: 'Number of errors logged' })
+  @Field(() => Int)
   count: number;
 }
 
-@ObjectType({ description: 'Clinical prescription insights and system reliability / error metrics' })
+@ObjectType()
 export class ClinicalAndSystemAnalyticsEntity {
-  @Field(() => Int, { description: 'Total digital prescriptions issued' })
+  @Field(() => Int)
   total_prescriptions: number;
 
-  @Field(() => Float, { description: 'Percentage of completed consultations that received a digital prescription' })
+  @Field(() => Float)
   prescription_issuance_rate: number;
 
-  @Field(() => [TopDiagnosisCount], { description: 'Top clinical diagnoses issued by doctors' })
+  @Field(() => [TopDiagnosisCount])
   top_diagnoses: TopDiagnosisCount[];
 
-  @Field(() => Int, { description: 'Total unhandled or service errors recorded in audit log' })
+  @Field(() => Int)
   total_system_errors: number;
 
-  @Field(() => [ErrorActionCount], { description: 'Breakdown of audit logs by resolution action' })
+  @Field(() => [ErrorActionCount])
   errors_by_action: ErrorActionCount[];
 
-  @Field(() => [TopFailingApi], { description: 'Top 5 failing services/APIs by error volume' })
+  @Field(() => [TopFailingApi])
   top_failing_apis: TopFailingApi[];
 
-  @Field(() => [ErrorTimeSeriesPoint], { description: 'System error incident rate over time' })
+  @Field(() => [ErrorTimeSeriesPoint])
   errors_timeline: ErrorTimeSeriesPoint[];
 }

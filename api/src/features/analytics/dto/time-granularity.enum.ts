@@ -8,5 +8,4 @@ export enum TimeGranularity {
 
 registerEnumType(TimeGranularity, {
   name: 'TimeGranularity',
-  description: 'Grouping granularity for time-series analytics (DAY, WEEK, MONTH)',
 });
