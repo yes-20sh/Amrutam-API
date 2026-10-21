@@ -8,11 +8,13 @@ import { UserRole } from '../../common/enum/user-role.enum';
 
 @Resolver(() => ProfileEntity)
 export class ProfileResolver {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(private readonly profileService: ProfileService) { }
 
   @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Query(() => ProfileEntity)
-  async myProfile(@CurrentUserId() userId: string): Promise<ProfileEntity> {
+  async myProfile(
+    @CurrentUserId() userId: string,
+  ): Promise<ProfileEntity> {
     return this.profileService.myProfile(userId);
   }
 
