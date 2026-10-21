@@ -8,6 +8,10 @@ A robust, enterprise-grade Telemedicine and Doctor Consultation Backend built wi
 
 - [Overview](#overview)
 - [Architecture & Tech Stack](#architecture--tech-stack)
+- [Feature-Based Architecture & Directory Structure](#feature-based-architecture--directory-structure)
+  - [Architectural Principles](#architectural-principles)
+  - [Directory & File Structure](#directory--file-structure)
+  - [Feature Module Anatomy](#feature-module-anatomy)
 - [Database Schema & Entity Relationship Diagram (ERD)](#database-schema--entity-relationship-diagram-erd)
   - [Entity Relationship Diagram](#entity-relationship-diagram)
   - [Entity Schema Definitions](#entity-schema-definitions)
@@ -18,16 +22,13 @@ A robust, enterprise-grade Telemedicine and Doctor Consultation Backend built wi
   - [4. Concurrency Control & Double-Booking Prevention](#4-concurrency-control--double-booking-prevention)
   - [5. System Audit Logging & Incident Tracking](#5-system-audit-logging--incident-tracking)
 - [Observability & System Monitoring](#observability--system-monitoring)
-  - [NestJS Observability & Distributed Tracing (@nestjs/observe)](#nestjs-observability--distributed-tracing-nestjsobserve)
   - [Vercel Serverless Monitoring & Performance Insights](#vercel-serverless-monitoring--performance-insights)
-  - [Health Check & Service Readiness (`/health`)](#health-check--service-readiness-health)
 - [CI/CD Pipeline & GitHub Actions](#cicd-pipeline--github-actions)
-  - [Workflow Architecture & Stages](#workflow-architecture--stages)
   - [PR Gatekeeper & Automated Build Validation](#pr-gatekeeper--automated-build-validation)
   - [Vercel Production Deployment Automation](#vercel-production-deployment-automation)
 - [Development Quality & Pre-Commit Hooks (Husky)](#development-quality--pre-commit-hooks-husky)
-  - [Husky Pre-Commit Hook Architecture](#husky-pre-commit-hook-architecture)
-  - [Enforced Quality Guardrails](#enforced-quality-guardrails)
+  - [Pre-Commit Verification Gates](#pre-commit-verification-gates)
+  - [Granular Bypass Environment Variables](#granular-bypass-environment-variables)
 - [Comprehensive User Flows & Lifecycle Diagrams](#comprehensive-user-flows--lifecycle-diagrams)
   - [Lifecycle Sequence Diagram](#lifecycle-sequence-diagram)
   - [Flow 1: User Onboarding, MFA Enrollment & 2-Step Login Handshake](#flow-1-user-onboarding-mfa-enrollment--2-step-login-handshake)
@@ -87,6 +88,117 @@ Amrutam API provides an end-to-end telemedicine backend platform connecting pati
   - `helmet`, `cors`, and `bcrypt` password hashing
 - **Validation**: `class-validator` & `class-transformer` with global validation pipes
 - **Runtime**: [Bun](https://bun.sh/) & Node.js (v20+)
+
+---
+
+## Feature-Based Architecture & Directory Structure
+
+The Amrutam API is designed according to **Feature-Driven Development (FDD)** and **Vertical Slice Architecture** principles. Rather than organizing code by horizontal technical layers (all controllers in one directory, all services in another), each clinical domain is packaged as a high-cohesion, low-coupling feature module.
+
+### Architectural Principles
+
+1. **Domain Feature Slicing (`src/features/`)**:
+   - Every business capability (`auth`, `doctor`, `consultation`, `payment`, `prescription`, `availability-slot`, `analytics`, `audit-log`, `profile`) is an autonomous domain module containing its own module registration, GraphQL resolvers, business services, input DTOs, response entities, and unit tests.
+   - Cross-domain interactions occur cleanly through service dependency injection or repository references without tight coupling.
+
+2. **Strict Separation of Database Schemas vs GraphQL Surface**:
+   - **Database Schemas (`src/schemas/`)**: Define the physical relational model in PostgreSQL via TypeORM decorators (`@Entity()`, `@Column()`, `@OneToMany()`, `@JoinColumn()`).
+   - **GraphQL Input DTOs (`src/features/*/dto/`)**: Define and enforce incoming mutation and query argument validation using `class-validator` and `class-transformer`.
+   - **GraphQL Object Entities (`src/features/*/entities/`)**: Define the outgoing GraphQL response shapes via `@ObjectType()` and `@Field()`, ensuring that database internals (e.g. hashed passwords, internal tokens) are never unintentionally leaked to clients.
+
+3. **Core Infrastructure vs Common Primitives**:
+   - **`src/core/`**: Central infrastructure engines (TypeORM database bootstrap, Redis caching client, Apollo GraphQL driver setup, Helmet/CORS security, Cloudinary media CDN, and request context middleware).
+   - **`src/common/`**: Reusable domain primitives including guards (`JwtAuthGuard`, `RolesGuard`), custom decorators (`@CurrentUser()`, `@Roles()`, `@Public()`), domain enums (`Role`, `ConsultationStatus`), and standard pagination DTOs.
+   - **`src/utils/`**: Deterministic utility functions for cryptographic hashing, TOTP MFA secret derivation, HTTP-only cookie management, and centralized error logging.
+
+---
+
+### Directory & File Structure
+
+```text
+api/
+├── .bruno/                              # Bruno GraphQL API Collection & testing environment
+├── .github/
+│   └── workflows/
+│       └── deploy-vercel.yml            # CI/CD GitHub Actions pipeline
+├── .husky/
+│   └── pre-commit                       # Pre-commit hook: Lint-staged, Build & Security Audit
+├── src/
+│   ├── app.module.ts                    # Root NestJS application module wiring all features
+│   ├── main.ts                          # Bootstrap entry point (Helmet, CORS, ValidationPipe)
+│   │
+│   ├── common/                          # Shared domain primitives & cross-cutting contracts
+│   │   ├── decorator/                   # Custom decorators (@CurrentUser, @Roles, @Public)
+│   │   ├── enum/                        # Global enums (Role, ConsultationStatus, PaymentStatus)
+│   │   ├── gaurds/                      # Authorization guards (JwtAuthGuard, RolesGuard)
+│   │   └── pagination/                  # Standardized Relay-style / offset pagination DTOs
+│   │
+│   ├── core/                            # Infrastructure adapters & third-party integrations
+│   │   ├── cloudinary/                  # Cloudinary image & document upload service
+│   │   ├── context/                     # GraphQL execution context extraction
+│   │   ├── database/                    # TypeORM PostgreSQL connection configuration
+│   │   ├── graphql/                     # Apollo Server Code-First driver setup
+│   │   ├── middleware/                  # HTTP & cookie-parsing middlewares
+│   │   ├── redis/                       # Distributed Redis cache & mutex client
+│   │   └── security/                    # Helmet headers, rate limiting, and CORS policy
+│   │
+│   ├── features/                        # Domain-driven vertical feature slices
+│   │   ├── analytics/                   # Admin executive KPI aggregation & reporting
+│   │   │   ├── dto/                     # Analytics filter inputs
+│   │   │   ├── entities/                # GraphQL ObjectTypes for KPI dashboards
+│   │   │   ├── analytics.module.ts
+│   │   │   ├── analytics.resolver.ts
+│   │   │   ├── analytics.service.ts
+│   │   │   └── analytics.service.spec.ts
+│   │   ├── audit-log/                   # Error tracking, audit log queries & resolution
+│   │   ├── auth/                        # Registration, login, JWT issuance, MFA / 2FA TOTP
+│   │   ├── availability-slot/           # Doctor slot generation, bulk slots & concurrency locks
+│   │   ├── consultation/                # Patient bookings, status transitions & auto-expiry
+│   │   ├── doctor/                      # Doctor credentials, verification & search
+│   │   ├── health/                      # Uptime probes & database health inspection
+│   │   ├── payment/                     # Payment intent creation, processing & refund flows
+│   │   ├── prescription/                # Structured digital prescriptions with medications
+│   │   └── profile/                     # User & patient demographic profile management
+│   │
+│   ├── schemas/                         # TypeORM relational entities (PostgreSQL tables)
+│   │   ├── audit_log.schema.ts          # audit_logs table
+│   │   ├── availability_slot.schema.ts  # availability_slots table
+│   │   ├── consultation.schema.ts       # consultations table
+│   │   ├── doctor.schema.ts             # doctors table
+│   │   ├── payment.schema.ts            # payments table
+│   │   ├── prescription.schema.ts       # prescriptions table
+│   │   ├── profile.schema.ts            # profiles table
+│   │   ├── user.schema.ts               # users table
+│   │   └── schemas.ts                   # Central entity barrel export for TypeORM
+│   │
+│   └── utils/                           # Pure utility functions
+│       ├── cookie/                      # HTTP-only cookie serialization
+│       ├── crypto/                      # Password hashing & token encryption
+│       ├── error/                       # Centralized error handling & audit capture
+│       └── mfa/                         # TOTP QR-code generation & secret validation
+│
+├── dist/                                # Compiled JavaScript build artifacts
+├── nest-cli.json                        # NestJS CLI configuration
+├── package.json                         # Scripts (lint, build, audit) and dependencies
+├── tsconfig.json                        # TypeScript strict compiler configuration
+└── vercel.json                          # Vercel serverless deployment routing config
+```
+
+---
+
+### Feature Module Anatomy
+
+Each domain feature inside `src/features/<feature-name>/` maintains a consistent internal topology:
+
+| File / Directory | Responsibility | Example (`src/features/consultation`) |
+| :--- | :--- | :--- |
+| `*.module.ts` | Configures NestJS DI container and registers TypeORM repositories. | `consultation.module.ts` |
+| `*.resolver.ts` | Defines GraphQL Query and Mutation entry points, applying `@Roles` and guards. | `consultation.resolver.ts` |
+| `*.service.ts` | Houses business rules, transactional mutations, concurrency locks, and queries. | `consultation.service.ts` |
+| `*.resolver.spec.ts` | Unit tests verifying resolver responses, argument validation, and guards. | `consultation.resolver.spec.ts` |
+| `*.service.spec.ts` | Comprehensive test suite verifying business logic, mocks, and edge cases. | `consultation.service.spec.ts` |
+| `dto/` | Input argument types annotated with `class-validator` for request payload sanitization. | `book-consultation.input.ts` |
+| `entities/` | GraphQL `@ObjectType()` definitions returned to clients across operations. | `consultation.entity.ts` |
 
 ---
 
@@ -263,20 +375,20 @@ The platform enforces a Defense-in-Depth, Zero-Trust architectural design across
 
 ```mermaid
 graph TD
-    Client[Client Request] --> Helmet[Helmet & CORS Middleware]
-    Helmet --> PublicGuard{PublicApiGuard}
-    PublicGuard -- "@Public()" --> Resolver[GraphQL Resolver Execution]
-    PublicGuard -- Protected --> TokenExtract[Extract JWT from Cookie or Header]
-    TokenExtract --> JWTVerify{Verify JWT Signature & Expiry}
-    JWTVerify -- Invalid / Expired --> 401[401 Unauthorized]
-    JWTVerify -- Valid --> UserStatusCheck{Check User Status}
-    UserStatusCheck -- SUSPENDED / INACTIVE --> 403[403 Forbidden]
-    UserStatusCheck -- ACTIVE --> RolesGuard{RolesGuard}
-    RolesGuard -- Role Mismatch --> 403Role[403 Forbidden - Insufficient Permissions]
-    RolesGuard -- Role Authorized --> Decorator[Inject @CurrentUserId()]
+    Client["Client Request"] --> Helmet["Helmet & CORS Middleware"]
+    Helmet --> PublicGuard{"PublicApiGuard"}
+    PublicGuard -->|"@Public() Endpoint"| Resolver["GraphQL Resolver Execution"]
+    PublicGuard -->|"Protected Endpoint"| TokenExtract["Extract JWT from Cookie or Header"]
+    TokenExtract --> JWTVerify{"Verify JWT Signature & Expiry"}
+    JWTVerify -->|"Invalid or Expired"| Err401["401 Unauthorized"]
+    JWTVerify -->|"Valid Token"| UserStatusCheck{"Check User Status"}
+    UserStatusCheck -->|"Suspended or Inactive"| Err403["403 Forbidden"]
+    UserStatusCheck -->|"Active User"| RolesGuard{"RolesGuard"}
+    RolesGuard -->|"Role Mismatch"| ErrRole["403 Forbidden - Insufficient Permissions"]
+    RolesGuard -->|"Role Authorized"| Decorator["Inject @CurrentUserId()"]
     Decorator --> Resolver
-    Resolver --> Service[Service Layer with handleServiceError]
-    Service -- Exception Caught --> AuditLog[(PostgreSQL audit_logs)]
+    Resolver --> Service["Service Layer with handleServiceError"]
+    Service -->|"Exception Caught"| AuditLog[("PostgreSQL audit_logs")]
 ```
 
 ### 1. Zero-Trust Access Pipeline
@@ -380,42 +492,7 @@ The API integrates real-time error auditing directly into `handleServiceError`:
 
 ## Observability & System Monitoring
 
-Amrutam API integrates enterprise Application Performance Monitoring (APM), OpenTelemetry-compatible distributed tracing, and real-time execution insights across both local containers and serverless production infrastructure.
-
-### NestJS Observability & Distributed Tracing (@nestjs/observe)
-
-The API instruments all incoming GraphQL queries, mutations, database queries, and middleware using [@nestjs/observe](https://www.npmjs.com/package/@nestjs/observe):
-
-```typescript
-// src/app.module.ts
-export const { ObserveModule, ObserveInstrument } = createObserveModule({
-  attachTraceIdToLogs: true,
-});
-
-@Module({
-  imports: [
-    ObserveModule.forRoot({
-      serviceId: process.env.OBSERVE_SERVICE_ID || 'amrutam-api',
-      appKey: process.env.OBSERVE_APP_KEY,
-      appSecret: process.env.OBSERVE_APP_SECRET,
-      enabled: process.env.OBSERVE_ENABLE === 'true',
-    }),
-    // ...
-  ],
-})
-```
-
-- **Trace ID Injection in Logs**: With `attachTraceIdToLogs: true`, every log entry generated by NestJS Logger automatically carries an active `traceId`. When an exception occurs, developers and SREs can trace the exact request across microservices.
-- **Instrumented Application Bootstrap**: Hooked into NestFactory initialization in `src/main.ts`:
-  ```typescript
-  const app = await NestFactory.create(AppModule, {
-    instrument: ObserveInstrument,
-  });
-  ```
-- **GraphQL Field Resolver Metrics**: Tracks query resolution duration, detecting N+1 query bottlenecks and resolver latency spikes.
-- **PostgreSQL & Redis Telemetry**: Records SQL execution times and Redis cache hit/miss rates.
-
----
+Amrutam API integrates real-time execution insights and telemetry across serverless production infrastructure:
 
 ### Vercel Serverless Monitoring & Performance Insights
 
@@ -428,65 +505,9 @@ When deployed to Vercel, the NestJS application runs as a high-performance serve
 
 ---
 
-### Health Check & Service Readiness (`/health`)
-
-The platform exposes an automated health inspection endpoint and GraphQL query managed by `HealthModule`:
-
-- **REST Endpoint**: `GET /health` returns HTTP `200 OK` with JSON health status:
-  ```json
-  {
-    "status": "ok",
-    "timestamp": "2026-10-22T00:00:00.000Z",
-    "database": "connected",
-    "redis": "connected"
-  }
-  ```
-- **GraphQL Query**:
-  ```graphql
-  query HealthCheck {
-    health {
-      status
-      timestamp
-    }
-  }
-  ```
-- **Probes**: Utilized by uptime monitors, container orchestrators, and Vercel health probes for zero-downtime routing.
-
----
-
 ## CI/CD Pipeline & GitHub Actions
 
 The repository employs a fully automated Continuous Integration and Continuous Deployment (CI/CD) pipeline managed via GitHub Actions ([.github/workflows/deploy-vercel.yml](file:///e:/Amrutam-API/.github/workflows/deploy-vercel.yml)).
-
-### Workflow Architecture & Stages
-
-```mermaid
-graph LR
-    subgraph Trigger
-        PR[Pull Request to main]
-        Push[Push to main]
-    end
-
-    subgraph CI Stage ["1. Build & Quality Gate"]
-        Checkout[actions/checkout@v4]
-        SetupNode[Setup Node.js 24]
-        SetupBun[Setup Bun v2]
-        Install[bun install --frozen-lockfile]
-        Build[bun run build]
-    end
-
-    subgraph CD Stage ["2. Production Deployment"]
-        ValidateSecrets[Validate Vercel Credentials]
-        VercelCLI[Install Vercel CLI]
-        VercelPull[vercel pull --prod]
-        VercelBuild[vercel build --prod]
-        VercelDeploy[vercel deploy --prebuilt --prod]
-    end
-
-    PR --> Checkout --> SetupNode --> SetupBun --> Install --> Build
-    Push --> Checkout
-    Build -- "If main branch push" --> ValidateSecrets --> VercelCLI --> VercelPull --> VercelBuild --> VercelDeploy
-```
 
 ### PR Gatekeeper & Automated Build Validation
 
@@ -508,42 +529,41 @@ Upon pushing or merging a pull request into `main`, the `deploy` job executes wi
 
 ## Development Quality & Pre-Commit Hooks (Husky)
 
-The repository uses **Husky** and **lint-staged** to run Oxlint on staged
-TypeScript files before a commit. The lint check is enabled by default.
+The repository integrates **Husky** and **lint-staged** ([api/.husky/pre-commit](file:///e:/Amrutam-API/api/.husky/pre-commit)) to enforce strict code hygiene, compilation integrity, and supply chain security prior to any commit:
 
-### Husky Pre-Commit Hook Architecture
+### Pre-Commit Verification Gates
 
-The `prepare` script in `api/package.json` installs Husky. When you run
-`git commit`, the hook runs `lint-staged` from the API directory:
+Before git allows any commit to be created, three automated gates execute sequentially:
 
-```bash
-cd api
-npx lint-staged
+1. **ESLint / Oxlint Error Check**: Scans all staged TypeScript files (`npx lint-staged` with `oxlint --type-aware`) to catch and intercept syntax errors, unused variables, formatting problems, and floating promises before they enter git history.
+2. **NestJS Build Compilation Check**: Runs the complete TypeScript compiler and NestJS build (`npm run build` / `nest build`) to ensure that all modules, services, resolvers, and decorators compile cleanly with zero TypeScript errors.
+3. **Dependency Vulnerability Security Audit**: Executes `npm audit --audit-level=high` to inspect all third-party dependencies for known high and critical vulnerabilities, ensuring that vulnerable packages are blocked from entering the codebase.
+
+```mermaid
+graph TD
+    Commit["git commit"] --> Gate1["1. ESLint / Oxlint Check<br/>(npx lint-staged)"]
+    Gate1 -->|Pass| Gate2["2. Build Compilation<br/>(npm run build)"]
+    Gate2 -->|Pass| Gate3["3. Security Audit<br/>(npm audit --audit-level=high)"]
+    Gate3 -->|Pass| CommitSuccess[" Commit Succeeded"]
+    
+    Gate1 -.->|Fail| Abort[" Commit Aborted"]
+    Gate2 -.->|Fail| Abort
+    Gate3 -.->|Fail| Abort
 ```
 
-### Turning the pre-commit lint check off and on
+### Granular Bypass Environment Variables
 
-To skip only the pre-commit lint check for one commit:
+Each verification gate can be individually bypassed when necessary using environment variables:
 
-```bash
-SKIP_PRE_COMMIT_LINT=1 git commit -m "your commit message"
-```
+| Environment Variable | Target Gate | Description |
+| :--- | :--- | :--- |
+| `SKIP_PRE_COMMIT_LINT=1` | ESLint / Oxlint Check | Skips staged file linting |
+| `SKIP_PRE_COMMIT_BUILD=1` | NestJS Build Compilation | Skips TypeScript project compilation check |
+| `SKIP_PRE_COMMIT_AUDIT=1` | Dependency Security Audit | Skips high/critical vulnerability scanning |
+| `SKIP_PRE_COMMIT=1` | All Validation Gates | Skips all pre-commit hook checks |
+| `HUSKY=0` | Husky Framework | Native Husky bypass (temporarily disables all hooks) |
 
-In PowerShell:
-
-```powershell
-$env:SKIP_PRE_COMMIT_LINT = "1"
-git commit -m "your commit message"
-Remove-Item Env:SKIP_PRE_COMMIT_LINT
-```
-
-The check is on by default whenever `SKIP_PRE_COMMIT_LINT` is unset or not `1`.
-To skip all Husky hooks for a single commit, use Husky's standard `HUSKY=0`
-setting (in PowerShell, set `$env:HUSKY = "0"` before running `git commit`).
-
-These settings affect local Git hooks only. They do not change Vercel or
-GitHub Actions dependency installation or build checks. Run the full lint
-command manually with `bun run lint`.
+These local pre-commit checks ensure local developer quality while leaving GitHub Actions CI/CD workflows as the immutable final authority on pull requests.
 
 ---
 
