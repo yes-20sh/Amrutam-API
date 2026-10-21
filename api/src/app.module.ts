@@ -13,6 +13,7 @@ import { DoctorModule } from './features/doctor/doctor.module';
 import { AvailabilitySlotModule } from './features/availability-slot/availability-slot.module';
 import { ConsultationModule } from './features/consultation/consultation.module';
 import { PrescriptionModule } from './features/prescription/prescription.module';
+import { PaymentModule } from './features/payment/payment.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PrescriptionModule } from './features/prescription/prescription.module'
     AvailabilitySlotModule,
     ConsultationModule,
     PrescriptionModule,
+    PaymentModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: PublicApiGuard }],
 })

@@ -1,0 +1,23 @@
+meta {
+  name: Refund Payment
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation RefundPayment($paymentId: ID!) {
+    refundPayment(paymentId: $paymentId)
+  }
+}
+
+body:graphql:vars {
+  {
+    "paymentId": "00000000-0000-0000-0000-000000000000"
+  }
+}

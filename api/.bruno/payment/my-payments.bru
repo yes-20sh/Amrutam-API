@@ -1,0 +1,49 @@
+meta {
+  name: My Payments
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  query MyPayments {
+    myPayments {
+      payment_id
+      consultation_id
+      amount
+      currency
+      payment_method
+      payment_status
+      transaction_reference
+      paid_at
+      created_at
+      consultation {
+        consultation_id
+        scheduled_at
+        consultation_type
+        status
+        patient {
+          user_id
+          email
+          profile {
+            full_name
+          }
+        }
+        doctor {
+          doctor_id
+          specialization
+          user {
+            profile {
+              full_name
+            }
+          }
+        }
+      }
+    }
+  }
+}

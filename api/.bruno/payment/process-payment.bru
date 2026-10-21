@@ -1,0 +1,28 @@
+meta {
+  name: Process Payment
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{graphqlUrl}}
+  body: graphql
+  auth: none
+}
+
+body:graphql {
+  mutation ProcessPayment($input: ProcessPaymentDto!) {
+    processPayment(input: $input)
+  }
+}
+
+body:graphql:vars {
+  {
+    "input": {
+      "payment_id": "00000000-0000-0000-0000-000000000000",
+      "payment_status": "PAID",
+      "payment_method": "UPI",
+      "transaction_reference": "TXN_UPI_1234567890"
+    }
+  }
+}
