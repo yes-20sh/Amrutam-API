@@ -177,7 +177,7 @@ export class AuthService {
         throw new NotFoundException('User not found');
       }
 
-      return foundUser as unknown as UserEntity;
+      return foundUser as UserEntity;
     } catch (error) {
       handleServiceError(error, this.logger, 'AuthService.me');
     }

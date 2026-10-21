@@ -17,7 +17,7 @@ export class AuthResolver {
   @Public()
   @Mutation(() => String)
   async signup(
-    @Args('signupInput') signupDto: SignupDto,
+    @Args('input') signupDto: SignupDto,
     @Context() context: { req: Request; res: Response },
   ): Promise<string> {
     return this.authService.signup(signupDto, context?.res);
@@ -26,7 +26,7 @@ export class AuthResolver {
   @Public()
   @Mutation(() => String)
   async login(
-    @Args('loginInput') loginDto: LoginDto,
+    @Args('input') loginDto: LoginDto,
     @Context() context: { req: Request; res: Response },
   ): Promise<string> {
     return this.authService.login(loginDto, context?.res);
