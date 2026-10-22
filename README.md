@@ -7,7 +7,7 @@ A modern, enterprise-grade Telemedicine and Doctor Consultation platform built w
 ## 🌟 Highlights
 
 - **Doctor Scheduling & Slot Engine**: Real-time availability slot generation with 30-minute intervals and transactional concurrency locks to prevent double-booking.
-- **Zero-Trust Security & 2FA**: Dual-mode JWT authentication (Bearer token & secure HTTP-only cookies) with TOTP Multi-Factor Authentication (MFA).
+- **Zero-Trust Security, 2FA & Distributed Rate Limiting**: Dual-mode JWT authentication (Bearer token & secure HTTP-only cookies), TOTP Multi-Factor Authentication (MFA), and multi-tiered Redis-backed rate limiting with atomic Lua scripts.
 - **Consultation & Prescriptions**: Complete consultation lifecycle from booking and status transitions to structured digital prescription creation.
 - **Integrated Payments & Auditing**: End-to-end payment initiation and settlement with automatic PostgreSQL audit log capture on exceptions.
 - **Production CI/CD & Quality Gates**: Automated GitHub Actions deployment pipeline for Vercel Serverless with Husky pre-commit hooks (ESLint/Oxlint, NestJS build, and high-severity vulnerability audit).

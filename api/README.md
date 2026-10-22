@@ -21,6 +21,7 @@ A robust, enterprise-grade Telemedicine and Doctor Consultation Backend built wi
   - [3. Multi-Factor Authentication (MFA / 2FA) Deep Dive](#3-multi-factor-authentication-mfa--2fa-deep-dive)
   - [4. Concurrency Control & Double-Booking Prevention](#4-concurrency-control--double-booking-prevention)
   - [5. System Audit Logging & Incident Tracking](#5-system-audit-logging--incident-tracking)
+  - [6. Distributed Redis Rate Limiting & Abuse Prevention](#6-distributed-redis-rate-limiting--abuse-prevention)
 - [Observability & System Monitoring](#observability--system-monitoring)
   - [Vercel Serverless Monitoring & Performance Insights](#vercel-serverless-monitoring--performance-insights)
 - [CI/CD Pipeline & GitHub Actions](#cicd-pipeline--github-actions)
@@ -375,8 +376,11 @@ The platform enforces a Defense-in-Depth, Zero-Trust architectural design across
 
 ```mermaid
 graph TD
-    Client["Client Request"] --> Helmet["Helmet & CORS Middleware"]
-    Helmet --> PublicGuard{"PublicApiGuard"}
+    Client["Client Request (/graphql)"] --> Helmet["Helmet & CORS Middleware"]
+    Helmet --> AuthMiddleware["AuthMiddleware (Context, User & IP Extraction)"]
+    AuthMiddleware --> ThrottlerGuard{"GqlThrottlerGuard (Redis Distributed Rate Limiting)"}
+    ThrottlerGuard -->|"Rate Limit Exceeded"| Err429["429 Too Many Requests (GraphQL Exception)"]
+    ThrottlerGuard -->|"Within Limits"| PublicGuard{"PublicApiGuard"}
     PublicGuard -->|"@Public() Endpoint"| Resolver["GraphQL Resolver Execution"]
     PublicGuard -->|"Protected Endpoint"| TokenExtract["Extract JWT from Cookie or Header"]
     TokenExtract --> JWTVerify{"Verify JWT Signature & Expiry"}
@@ -393,10 +397,11 @@ graph TD
 
 ### 1. Zero-Trust Access Pipeline
 
-1. **Global `PublicApiGuard`**: Every GraphQL query and mutation is protected by default. Only operations decorated with `@Public()` (such as `signup`, `login`, and public doctor queries) bypass the authentication barrier.
-2. **Account Status Verification**: Active sessions verify that `user.status === 'ACTIVE'`. Suspended or inactive accounts are rejected immediately before resolving domain data.
-3. **`RolesGuard` Enforcement**: Evaluates role requirements specified via `@Roles(UserRole.DOCTOR, UserRole.ADMIN)`. Access is rejected with `ForbiddenException` if the authenticated user's role does not match.
-4. **Context Identity Injection**: Resolvers access caller identity via `@CurrentUserId()` and `@CurrentUser()` decorators extracted directly from the verified token payload.
+1. **Distributed Rate Limiting (`GqlThrottlerGuard`)**: First guard in the execution pipeline. Protects the GraphQL engine against brute-force attacks, DDoS, and API resource exhaustion using atomic Redis Lua scripts with per-operation limits.
+2. **Global `PublicApiGuard`**: Every GraphQL query and mutation is protected by default. Only operations decorated with `@Public()` (such as `signup`, `login`, and public doctor queries) bypass the authentication barrier.
+3. **Account Status Verification**: Active sessions verify that `user.status === 'ACTIVE'`. Suspended or inactive accounts are rejected immediately before resolving domain data.
+4. **`RolesGuard` Enforcement**: Evaluates role requirements specified via `@Roles(UserRole.DOCTOR, UserRole.ADMIN)`. Access is rejected with `ForbiddenException` if the authenticated user's role does not match.
+5. **Context Identity Injection**: Resolvers access caller identity via `@CurrentUserId()` and `@CurrentUser()` decorators extracted directly from the verified token payload.
 
 ---
 
@@ -487,6 +492,44 @@ Telemedicine appointment booking requires strict concurrency guarantees to preve
 The API integrates real-time error auditing directly into `handleServiceError`:
 - **Automated Capture**: Any unhandled internal server error automatically logs the error message, execution stack, calling service name, user ID, and client IP address into the `audit_logs` table.
 - **Incident Lifecycle**: Admins can query audit logs by API name, user, or status, and update the investigation lifecycle (`PENDING` &rarr; `INVESTIGATING` &rarr; `RESOLVED` / `IGNORED`).
+
+---
+
+### 6. Distributed Redis Rate Limiting & Abuse Prevention
+
+The API integrates a multi-tiered, enterprise-grade rate limiting engine designed specifically for GraphQL operations, built on **`@nestjs/throttler`** and **Redis**:
+
+- **GraphQL Context Integration (`GqlThrottlerGuard`)**: Standard HTTP middleware cannot distinguish between different operations hitting `/graphql`. `GqlThrottlerGuard` unpacks the Apollo Server `GqlExecutionContext` to enforce limits at the resolver and mutation level.
+- **Dynamic Identity Tracking**:
+  - **Authenticated Requests**: Uses caller UUID (`usr:<userId>`) so legitimate users sharing an IP (e.g. corporate networks, hospitals, cellular carriers) are never throttled due to another user's activity.
+  - **Public / Anonymous Requests**: Tracks origin client IP (`ip:<cleanIp>`) resolved from `x-forwarded-for` and proxy headers.
+- **Atomic Redis Storage with Lua (`ThrottlerStorageRedisService`)**: Evaluates rate counter increments, TTLs, and block durations atomically using a custom Lua script. If Redis encounters transient network partitions, the engine automatically falls back to in-memory tracking without dropping requests.
+- **Granular Semantic Tiers**:
+
+| Tier / Decorator | Threshold & Window | Target Operations | Security Objective |
+| :--- | :--- | :--- | :--- |
+| **`@ThrottleAuth()`** | `5 req / 15 min` | `signup`, `login`, `verifyMfaLogin` | Prevents brute-force credential stuffing and password guessing |
+| **`@ThrottleSecurity()`** | `5 req / 10 min` | `generateMfaSecret`, `enableMfa`, `disableMfa`, `logout` | Protects TOTP secrets and MFA state modifications |
+| **`@ThrottleTransactional()`** | `10 req / 1 min` | `createPayment`, `processPayment`, `refundPayment`, `bookConsultation`, `rescheduleConsultation`, `cancelConsultation` | Prevents double bookings, race conditions, and payment gateway flooding |
+| **`@ThrottleMutations()`** | `20 req / 1 min` | Slot creation, doctor profiles, user profiles, prescriptions | Safeguards state-changing resource mutations |
+| **`@ThrottleHeavy()`** | `30 req / 1 min` | Admin analytics dashboards and audit log queries | Protects database from heavy aggregation queries and table scans |
+| **Default Baseline** | `100 req / 1 min` | `me`, `listDoctors`, `getDoctorAvailability`, standard reads | Prevents scraper abuse while ensuring seamless user experience |
+| **`@SkipThrottle()`** | Unlimited | `health` | Exempts health check probes from rate limiting |
+
+When a client breaches a tier's limit, the API immediately responds with an HTTP 429 / GraphQL error:
+```json
+{
+  "errors": [
+    {
+      "message": "Too many requests. Rate limit exceeded. Please wait 45 second(s) before trying again.",
+      "extensions": {
+        "code": "TOO_MANY_REQUESTS",
+        "status": 429
+      }
+    }
+  ]
+}
+```
 
 ---
 
