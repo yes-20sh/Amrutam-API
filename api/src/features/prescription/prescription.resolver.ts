@@ -3,6 +3,7 @@ import { Resolver, Mutation, Query, Args, ID } from '@nestjs/graphql';
 import { PrescriptionService } from './prescription.service';
 import { Public } from '../../common/decorator/public.decorator';
 import { CurrentUserId } from '../../common/decorator/current-user.decorator';
+import { ThrottleMutations } from '../../common/decorator/throttle.decorator';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
 import { PrescriptionEntity } from './entities/prescription.entity';
@@ -13,6 +14,7 @@ import { UserRole } from '../../common/enum/user-role.enum';
 export class PrescriptionResolver {
   constructor(private readonly prescriptionService: PrescriptionService) {}
 
+  @ThrottleMutations()
   @Roles(UserRole.DOCTOR)
   @Mutation(() => String)
   async createPrescription(
@@ -22,6 +24,7 @@ export class PrescriptionResolver {
     return this.prescriptionService.createPrescription(userId, createDto);
   }
 
+  @ThrottleMutations()
   @Roles(UserRole.DOCTOR)
   @Mutation(() => String)
   async updatePrescription(

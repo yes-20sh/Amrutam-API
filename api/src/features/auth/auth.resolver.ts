@@ -3,6 +3,10 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorator/public.decorator';
 import {
+  ThrottleAuth,
+  ThrottleSecurity,
+} from '../../common/decorator/throttle.decorator';
+import {
   CurrentUser,
   CurrentUserId,
   JwtPayload,
@@ -20,6 +24,7 @@ import { MfaEnableEntity } from './entities/mfa-enable.entity';
 export class AuthResolver {
   constructor(private readonly authService: AuthService) {}
 
+  @ThrottleAuth()
   @Public()
   @Mutation(() => String)
   async signup(
@@ -29,6 +34,7 @@ export class AuthResolver {
     return this.authService.signup(signupDto, context?.res);
   }
 
+  @ThrottleAuth()
   @Public()
   @Mutation(() => LoginResponseEntity)
   async login(
@@ -38,6 +44,7 @@ export class AuthResolver {
     return this.authService.login(loginDto, context?.res);
   }
 
+  @ThrottleAuth()
   @Public()
   @Mutation(() => String, {
     description: 'Verify 6-digit TOTP code or backup code to complete MFA login',
@@ -49,6 +56,7 @@ export class AuthResolver {
     return this.authService.verifyMfaLogin(verifyDto, context?.res);
   }
 
+  @ThrottleSecurity()
   @Mutation(() => MfaSetupEntity, {
     description: 'Generate Base32 secret and QR code Data URL for Google Authenticator setup',
   })
@@ -58,6 +66,7 @@ export class AuthResolver {
     return this.authService.generateMfaSecret(userId);
   }
 
+  @ThrottleSecurity()
   @Mutation(() => MfaEnableEntity, {
     description: 'Verify first TOTP code from Google Authenticator and enable MFA on the account',
   })
@@ -68,6 +77,7 @@ export class AuthResolver {
     return this.authService.enableMfa(userId, input.code);
   }
 
+  @ThrottleSecurity()
   @Mutation(() => String, {
     description: 'Disable MFA on the account after verifying current TOTP code',
   })
@@ -78,6 +88,7 @@ export class AuthResolver {
     return this.authService.disableMfa(userId, input.code);
   }
 
+  @ThrottleSecurity()
   @Public()
   @Mutation(() => String)
   async logout(

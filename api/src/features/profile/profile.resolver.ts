@@ -3,6 +3,7 @@ import { ProfileService } from './profile.service';
 import { ProfileEntity } from './entities/profile.entity';
 import { UpdateProfileInput } from './dto/update-profile.input';
 import { CurrentUserId } from '../../common/decorator/current-user.decorator';
+import { ThrottleMutations } from '../../common/decorator/throttle.decorator';
 import { Roles } from '../../common/decorator/roles.decorator';
 import { UserRole } from '../../common/enum/user-role.enum';
 
@@ -18,6 +19,7 @@ export class ProfileResolver {
     return this.profileService.myProfile(userId);
   }
 
+  @ThrottleMutations()
   @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Mutation(() => String)
   async updateProfile(

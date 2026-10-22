@@ -2,6 +2,7 @@ import { Resolver, Mutation, Query, Args, ID } from '@nestjs/graphql';
 
 import { PaymentService } from './payment.service';
 import { CurrentUserId } from '../../common/decorator/current-user.decorator';
+import { ThrottleTransactional } from '../../common/decorator/throttle.decorator';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { ProcessPaymentDto } from './dto/process-payment.dto';
 import { PaymentEntity } from './entities/payment.entity';
@@ -13,6 +14,7 @@ import { UserRole } from '../../common/enum/user-role.enum';
 export class PaymentResolver {
   constructor(private readonly paymentService: PaymentService) {}
 
+  @ThrottleTransactional()
   @Roles(UserRole.PATIENT)
   @Mutation(() => CreatePaymentResponse)
   async createPayment(
@@ -22,6 +24,7 @@ export class PaymentResolver {
     return this.paymentService.createPayment(userId, createDto);
   }
 
+  @ThrottleTransactional()
   @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Mutation(() => String)
   async processPayment(
@@ -31,6 +34,7 @@ export class PaymentResolver {
     return this.paymentService.processPayment(userId, processDto);
   }
 
+  @ThrottleTransactional()
   @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Mutation(() => String)
   async refundPayment(

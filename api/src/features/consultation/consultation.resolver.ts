@@ -3,6 +3,7 @@ import { Resolver, Mutation, Query, Args, ID } from '@nestjs/graphql';
 import { ConsultationService } from './consultation.service';
 import { Public } from '../../common/decorator/public.decorator';
 import { CurrentUserId } from '../../common/decorator/current-user.decorator';
+import { ThrottleTransactional } from '../../common/decorator/throttle.decorator';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { RescheduleConsultationDto } from './dto/reschedule-consultation.dto';
 import { ConsultationEntity } from './entities/consultation.entity';
@@ -13,6 +14,7 @@ import { UserRole } from '../../common/enum/user-role.enum';
 export class ConsultationResolver {
   constructor(private readonly consultationService: ConsultationService) {}
 
+  @ThrottleTransactional()
   @Roles(UserRole.PATIENT)
   @Mutation(() => String)
   async bookConsultation(
@@ -22,6 +24,7 @@ export class ConsultationResolver {
     return this.consultationService.bookConsultation(userId, createDto);
   }
 
+  @ThrottleTransactional()
   @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Mutation(() => String)
   async rescheduleConsultation(
@@ -31,6 +34,7 @@ export class ConsultationResolver {
     return this.consultationService.rescheduleConsultation(userId, rescheduleDto);
   }
 
+  @ThrottleTransactional()
   @Roles(UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN)
   @Mutation(() => String)
   async cancelConsultation(
@@ -41,6 +45,7 @@ export class ConsultationResolver {
     return this.consultationService.cancelConsultation(userId, consultationId, reason);
   }
 
+  @ThrottleTransactional()
   @Roles(UserRole.DOCTOR)
   @Mutation(() => String)
   async completeConsultation(

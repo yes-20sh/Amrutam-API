@@ -8,9 +8,11 @@ import { ConsultationAnalyticsEntity } from './entities/consultation-analytics.e
 import { DoctorAnalyticsEntity } from './entities/doctor-analytics.entity';
 import { PatientAnalyticsEntity } from './entities/patient-analytics.entity';
 import { ClinicalAndSystemAnalyticsEntity } from './entities/clinical-and-system-analytics.entity';
+import { ThrottleHeavy } from '../../common/decorator/throttle.decorator';
 import { Roles } from '../../common/decorator/roles.decorator';
 import { UserRole } from '../../common/enum/user-role.enum';
 
+@ThrottleHeavy()
 @Resolver(() => AdminDashboardSummaryEntity)
 export class AnalyticsResolver {
   constructor(private readonly analyticsService: AnalyticsService) {}

@@ -3,6 +3,7 @@ import { Resolver, Mutation, Query, Args, ID } from '@nestjs/graphql';
 import { AvailabilitySlotService } from './availability-slot.service';
 import { Public } from '../../common/decorator/public.decorator';
 import { CurrentUserId } from '../../common/decorator/current-user.decorator';
+import { ThrottleMutations } from '../../common/decorator/throttle.decorator';
 import { CreateAvailabilitySlotDto } from './dto/create-slot.dto';
 import { UpdateAvailabilitySlotDto } from './dto/update-slot.dto';
 import { BulkCreateSlotsDto } from './dto/bulk-create-slots.dto';
@@ -16,6 +17,7 @@ export class AvailabilitySlotResolver {
     private readonly availabilitySlotService: AvailabilitySlotService,
   ) {}
 
+  @ThrottleMutations()
   @Roles(UserRole.DOCTOR)
   @Mutation(() => String)
   async createAvailabilitySlot(
@@ -25,6 +27,7 @@ export class AvailabilitySlotResolver {
     return this.availabilitySlotService.createSlot(userId, createDto);
   }
 
+  @ThrottleMutations()
   @Roles(UserRole.DOCTOR)
   @Mutation(() => String)
   async createBulkAvailabilitySlots(
@@ -34,6 +37,7 @@ export class AvailabilitySlotResolver {
     return this.availabilitySlotService.createBulkSlots(userId, bulkDto);
   }
 
+  @ThrottleMutations()
   @Roles(UserRole.DOCTOR)
   @Mutation(() => String)
   async updateAvailabilitySlot(
@@ -44,6 +48,7 @@ export class AvailabilitySlotResolver {
     return this.availabilitySlotService.updateSlot(userId, slotId, updateDto);
   }
 
+  @ThrottleMutations()
   @Roles(UserRole.DOCTOR)
   @Mutation(() => String)
   async deleteAvailabilitySlot(

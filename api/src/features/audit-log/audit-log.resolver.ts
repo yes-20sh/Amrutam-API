@@ -6,7 +6,9 @@ import { UserRole } from '../../common/enum/user-role.enum';
 import { AuditLogAction } from '../../common/enum/audit-action.enum';
 import { AuditLogEntity } from './entities/audit-log.entity';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
+import { ThrottleHeavy } from '../../common/decorator/throttle.decorator';
 
+@ThrottleHeavy()
 @Resolver(() => AuditLogEntity)
 export class AuditLogResolver {
   constructor(private readonly auditLogService: AuditLogService) {}
